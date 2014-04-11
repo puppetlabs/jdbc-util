@@ -1,4 +1,4 @@
-# jdbc-util
+[![Build Status](https://travis-ci.org/puppetlabs/jdbc-util.png?branch=master)](https://travis-ci.org/puppetlabs/jdbc-util)# jdbc-util
 
 A Clojure library designed to ... well, that part is up to you.
 
