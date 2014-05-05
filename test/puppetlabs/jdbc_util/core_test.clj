@@ -1,7 +1,109 @@
 (ns puppetlabs.jdbc-util.core-test
   (:require [clojure.test :refer :all]
             [clojure.walk :refer [keywordize-keys]]
+            [clojure.java.jdbc :as jdbc]
             [puppetlabs.jdbc-util.core :refer :all]))
+
+(def test-db {:classname "org.postgresql.Driver"
+              :subprotocol "postgresql"
+              :subname "//localhost:5432/jdbc_util_test"
+              :user "jdbcutil"
+              :password "foobar"})
+
+(defn setup-db [db]
+  (jdbc/execute! db ["CREATE TABLE authors (
+                        name TEXT PRIMARY KEY,
+                        favorite_color TEXT)"])
+  (jdbc/execute! db ["CREATE TABLE books (
+                        title TEXT PRIMARY KEY,
+                        author TEXT REFERENCES authors (name))"])
+  (jdbc/insert! db :authors
+                {:name "kafka"  :favorite_color "black"}
+                {:name "borges" :favorite_color "purple"}
+                {:name "woolf"  :favorite_color "yellow"}
+                {:name "no one" :favorite_color "gray"})
+  (jdbc/insert! db :books
+                {:title "the castle"                  :author "kafka"}
+                {:title "the trial"                   :author "kafka"}
+                {:title "the aleph"                   :author "borges"}
+                {:title "library of babel"            :author "borges"}
+                {:title "the garden of forking paths" :author "borges"}
+                {:title "the voyage out"              :author "woolf"}
+                {:title "the waves"                   :author "woolf"}))
+
+(use-fixtures :once (fn [f]
+                      (let [env     #(System/getenv %)
+                            test-db (if (env "JDBCUTIL_DBNAME")
+                                      (merge test-db
+                                             {:subname  (env "JDBCUTIL_DBNAME")
+                                              :user     (env "JDBCUTIL_DBUSER")
+                                              :password (env "JDBCUTIL_PASS")})
+                                      test-db)]
+                      (drop-public-tables! test-db)
+                      (setup-db test-db)
+                      (f))))
+
+(defn find-author [rows name]
+  (first (filter #(= name (:name %)) rows)))
+
+(deftest ^:database querying
+  (testing "works within a transaction"
+    (let [rows (jdbc/with-db-transaction [test-db test-db]
+                 (query test-db ["SELECT name FROM authors ORDER BY name LIMIT 1"]))]
+      (is (= "borges" (:name (first rows))))))
+  (testing "properly translates arrays"
+    (let [rows (query test-db ["SELECT a.name, a.favorite_color, array_agg(b.title) AS books
+                                  FROM authors a JOIN books b ON a.name = b.author
+                                  GROUP BY a.name, a.favorite_color"])
+          borges (find-author rows "borges")
+          woolf  (find-author rows "woolf")
+          kafka  (find-author rows "kafka")]
+      (is (= 3 (count rows)))
+      (is (every? #(= #{:name :favorite_color :books} (set (keys %))) rows))
+      (are [x y] (= x y)
+           "borges" (:name borges)
+           "woolf"  (:name woolf)
+           "kafka"  (:name kafka)
+           "purple" (:favorite_color borges)
+           "yellow" (:favorite_color woolf)
+           "black"  (:favorite_color kafka)
+           true     (vector? (:books borges))
+           true     (vector? (:books woolf))
+           true     (vector? (:books kafka))
+           #{"the aleph" "library of babel" "the garden of forking paths"} (set (:books borges))
+           #{"the castle" "the trial"}                                     (set (:books kafka))
+           #{"the waves" "the voyage out"}                                 (set (:books woolf)))))
+  (testing "properly selects when no arrays present"
+    (let [rows (query test-db ["SELECT name, favorite_color FROM authors"])
+          borges (find-author rows "borges")
+          woolf  (find-author rows "woolf")
+          kafka  (find-author rows "kafka")
+          no-one (find-author rows "no one")]
+      (is (= 4 (count rows)))
+      (is (every? #(= #{:name :favorite_color} (set (keys %))) rows))
+      (are [x y] (= x y)
+           "no one" (:name no-one)
+           "gray"   (:favorite_color no-one)
+           "borges" (:name borges)
+           "woolf"  (:name woolf)
+           "kafka"  (:name kafka)
+           "purple" (:favorite_color borges)
+           "yellow" (:favorite_color woolf)
+           "black"  (:favorite_color kafka)))))
+
+(deftest convert-results-arrays-when-not-java-array
+  (testing "Arrays are processed while non-arrays are passed through"
+    (let [rows   [{:one "two" :three (into-array [1 2 3])}]
+          result (first (convert-result-arrays rows))]
+      (are [x y] (= x y)
+           true (vector? (:three result))
+           #{1 2 3} (set (:three result))
+           "two" (:one result))))
+  (testing "can pass a function to override vec default"
+    (let [rows   [{:one "two" :three (into-array [1 2 3])}]
+          result (first (convert-result-arrays set rows))]
+      (is (set? (:three result)))
+      (is (= #{1 2 3} (:three result))))))
 
 (deftest submap-aggregation
   (testing "handles nils"
