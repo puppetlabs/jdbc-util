@@ -1,10 +1,10 @@
-(ns puppetlabs.jdbc-util
+(ns puppetlabs.jdbc-util.core
   (:import java.util.regex.Pattern)
   (:require [clojure.java.jdbc           :as jdbc]
             [clojure.string              :as str]
             [puppetlabs.kitchensink.core :as ks]))
 
-(defn- convert-result-arrays
+(defn convert-result-arrays
   "Converts Java and JDBC arrays in a result set using the provided function
    (eg. vec, set). Values which aren't arrays are unchanged."
   ([result-set]
@@ -16,7 +16,7 @@
                      :else %)]
        (map #(ks/mapvals convert %) result-set))))
 
-(defn- query
+(defn query
   "An implementation of query that returns a fully evaluated result (no
    JDBCArray objects, etc)"
   [db sql-and-params]
