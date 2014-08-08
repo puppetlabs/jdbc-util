@@ -6,9 +6,9 @@
 
 (def test-db {:classname "org.postgresql.Driver"
               :subprotocol "postgresql"
-              :subname "//localhost:5432/jdbc_util_test"
-              :user "jdbcutil"
-              :password "foobar"})
+              :subname (or (System/getenv "TEST_DBSUBNAME") "jdbc_util_test")
+              :user (or (System/getenv "TEST_DBUSER") "jdbc_util_test")
+              :password (or (System/getenv "TEST_DBPASS") "foobar")})
 
 (defn setup-db [db]
   (jdbc/execute! db ["CREATE TABLE authors (
