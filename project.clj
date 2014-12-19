@@ -1,13 +1,14 @@
-(def ks-version "0.5.3")
+(def ks-version "1.0.0")
+
 (defproject puppetlabs/jdbc-util "0.1.0-SNAPSHOT"
   :description "Common JDBC helpers for use in Puppet Labs projects"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/puppetlabs/jdbc-util"
 
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
-  :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/java.jdbc "0.3.0"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.3-1100-jdbc41"]
                  [com.jolbox/bonecp "0.8.0.RELEASE" :exclusions [[org.slf4j/slf4j-api]]]
                  [puppetlabs/kitchensink ~ks-version]]
