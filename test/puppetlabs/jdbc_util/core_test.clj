@@ -31,17 +31,18 @@
                 {:title "the voyage out"              :author "woolf"}
                 {:title "the waves"                   :author "woolf"}))
 
-(use-fixtures :once (fn [f]
-                      (let [env     #(System/getenv %)
-                            test-db (if (env "JDBCUTIL_DBNAME")
-                                      (merge test-db
-                                             {:subname  (env "JDBCUTIL_DBNAME")
-                                              :user     (env "JDBCUTIL_DBUSER")
-                                              :password (env "JDBCUTIL_PASS")})
-                                      test-db)]
-                      (drop-public-tables! test-db)
-                      (setup-db test-db)
-                      (f))))
+(use-fixtures :once
+              (fn [f]
+                (let [env     #(System/getenv %)
+                      test-db (if (env "JDBCUTIL_DBNAME")
+                                (merge test-db
+                                       {:subname (env "JDBCUTIL_DBNAME")
+                                        :user (env "JDBCUTIL_DBUSER")
+                                        :password (env "JDBCUTIL_PASS")})
+                                test-db)]
+                  (drop-public-tables! test-db)
+                  (setup-db test-db)
+                  (f))))
 
 (defn find-author [rows name]
   (first (filter #(= name (:name %)) rows)))
@@ -51,6 +52,7 @@
     (let [rows (jdbc/with-db-transaction [test-db test-db]
                  (query test-db ["SELECT name FROM authors ORDER BY name LIMIT 1"]))]
       (is (= "borges" (:name (first rows))))))
+
   (testing "properly translates arrays"
     (let [rows (query test-db ["SELECT a.name, a.favorite_color, array_agg(b.title) AS books
                                   FROM authors a JOIN books b ON a.name = b.author
@@ -73,6 +75,7 @@
            #{"the aleph" "library of babel" "the garden of forking paths"} (set (:books borges))
            #{"the castle" "the trial"}                                     (set (:books kafka))
            #{"the waves" "the voyage out"}                                 (set (:books woolf)))))
+
   (testing "properly selects when no arrays present"
     (let [rows (query test-db ["SELECT name, favorite_color FROM authors"])
           borges (find-author rows "borges")
@@ -99,6 +102,7 @@
            true (vector? (:three result))
            #{1 2 3} (set (:three result))
            "two" (:one result))))
+
   (testing "can pass a function to override vec default"
     (let [rows   [{:one "two" :three (into-array [1 2 3])}]
           result (first (convert-result-arrays set rows))]
@@ -110,6 +114,7 @@
     (is (= '({:a 1 :b 2 :cs {}})
            (->> '({:a 1 :b 2 :c nil :d nil})
                 (aggregate-submap-by :c :d :cs)))))
+
   (testing "nested calls"
     (let [rows [{:value "one-val",
                  :parameter "one",

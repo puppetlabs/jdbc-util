@@ -1,14 +1,14 @@
 (ns puppetlabs.jdbc-util.core
   (:import java.util.regex.Pattern)
-  (:require [clojure.java.jdbc           :as jdbc]
-            [clojure.string              :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]))
 
 (defn public-tables
   "Get the names of all public tables in a database"
   [db-spec]
   (let [query "SELECT table_name FROM information_schema.tables WHERE LOWER(table_schema) = 'public'"
-               results (jdbc/query db-spec [query])]
+        results (jdbc/query db-spec [query])]
     (map :table_name results)))
 
 (defn drop-public-tables!
@@ -18,25 +18,25 @@
     (apply jdbc/db-do-commands db-spec (map #(format "DROP TABLE %s CASCADE" %) (seq tables)))))
 
 (defn convert-result-arrays
-  "Converts Java and JDBC arrays in a result set using the provided function
-   (eg. vec, set). Values which aren't arrays are unchanged."
+  "Converts Java and JDBC arrays in a result set using the provided
+  function (eg. vec, set). Values which aren't arrays are unchanged."
   ([result-set]
-     (convert-result-arrays vec result-set))
+   (convert-result-arrays vec result-set))
   ([f result-set]
-     (let [convert #(cond
-                     (ks/array? %) (f %)
-                     (isa? (class %) java.sql.Array) (f (.getArray %))
-                     :else %)]
-       (map #(ks/mapvals convert %) result-set))))
+   (let [convert #(cond
+                    (ks/array? %) (f %)
+                    (isa? (class %) java.sql.Array) (f (.getArray %))
+                    :else %)]
+     (map #(ks/mapvals convert %) result-set))))
 
 (defn query
   "An implementation of query that returns a fully evaluated result (no
-   JDBCArray objects, etc)"
+  JDBCArray objects, etc)"
   [db sql-and-params]
   (let [convert (fn [rs]
                   (doall
-                   (convert-result-arrays vec
-                                          (jdbc/result-set-seq rs))))]
+                    (convert-result-arrays vec
+                                           (jdbc/result-set-seq rs))))]
     (jdbc/db-query-with-resultset db sql-and-params convert)))
 
 (defn ordered-group-by
@@ -54,21 +54,22 @@
       (sort-by #(get-in % [1 0])))))
 
 (defn aggregate-submap-by
-  "Given a sequence of maps in results where each map contains agg-key and
-agg-val as keys, groups the maps that are identical except for the values in
-agg-key or agg-val. The values of agg-key and agg-val are turned into a map
-and stored in the resulting map under under-key."
+  "Given a sequence of maps in results where each map contains agg-key
+  and agg-val as keys, groups the maps that are identical except for the
+  values in agg-key or agg-val. The values of agg-key and agg-val are
+  turned into a map and stored in the resulting map under under-key."
   [agg-key agg-val under-key results]
   (for [[combined [_ & all]] (ordered-group-by #(dissoc % agg-key agg-val) results)]
     (assoc combined under-key (->> all
-                               (map (juxt agg-key agg-val))
-                               (remove (comp nil? first))
-                               (into {})))))
+                                (map (juxt agg-key agg-val))
+                                (remove (comp nil? first))
+                                (into {})))))
 
 (defn aggregate-column
-  "Given a sequence of rows as maps, aggregate the values of `column` into
-a sequence under `under`, combining rows that are equal except for the value
-of `column`. Useful for consolidating the results of an outer join."
+  "Given a sequence of rows as maps, aggregate the values of `column`
+  into a sequence under `under`, combining rows that are equal except
+  for the value of `column`. Useful for consolidating the results of an
+  outer join."
   [column under results]
   (for [[combined [_ & all]] (ordered-group-by #(dissoc % column) results)]
     (assoc combined under (map #(get % column) all))))
@@ -90,10 +91,10 @@ of `column`. Useful for consolidating the results of an outer join."
       (throw (IllegalArgumentException. (str "there are not " n " '?'s in the given string"))))))
 
 (defn expand-seq-params
-  "A helper for prepared SQL statements with sequential parameters. Returns
-a new prepared statement with every `?` that corresponded to a sequential
-parameter expanded to a tuple literal of the appropriate length and flattened
-parameters."
+  "A helper for prepared SQL statements with sequential parameters.
+  Returns a new prepared statement with every `?` that corresponded to a
+  sequential parameter expanded to a tuple literal of the appropriate
+  length and flattened parameters."
   [[sql & parameters]]
   (let [seq-params-w-indices (->> (map vector parameters (range))
                                (filter (comp sequential? first)))
