@@ -2,7 +2,9 @@
   (:import java.util.regex.Pattern)
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.jdbc-util.cp :as cp]
+            [puppetlabs.kitchensink.core :as ks]
+            [schema.core :as s]))
 
 (defn public-tables
   "Get the names of all public tables in a database"
@@ -105,3 +107,17 @@
                        [sql 0]
                        seq-params-w-indices)]
     (vec (conj (flatten parameters) sql'))))
+
+;; Connection pooling
+
+(s/defn ^:always-validate pooled-db-spec :- cp/pooled-db-spec-schema
+  "Given a database connection attribute map, return a JDBC datasource
+  compatible with clojure.java.jdbc that is backed by a connection
+  pool."
+  [pool-name options]
+  (cp/pooled-db-spec pool-name options))
+
+(s/defn ^:always-validate close-pooled-db-spec
+  "Close an open DataSource supplied as a JDBC compatible db-spec."
+  [db-spec :- cp/pooled-db-spec-schema]
+  (cp/close-pooled-db-spec db-spec))

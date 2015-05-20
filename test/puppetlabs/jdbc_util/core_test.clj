@@ -2,13 +2,8 @@
   (:require [clojure.test :refer :all]
             [clojure.walk :refer [keywordize-keys]]
             [clojure.java.jdbc :as jdbc]
-            [puppetlabs.jdbc-util.core :refer :all]))
-
-(def test-db {:classname "org.postgresql.Driver"
-              :subprotocol "postgresql"
-              :subname (or (System/getenv "TEST_DBSUBNAME") "jdbc_util_test")
-              :user (or (System/getenv "TEST_DBUSER") "jdbc_util_test")
-              :password (or (System/getenv "TEST_DBPASS") "foobar")})
+            [puppetlabs.jdbc-util.core :refer :all]
+            [puppetlabs.jdbc-util.testutils :refer [test-db]]))
 
 (defn setup-db [db]
   (jdbc/execute! db ["CREATE TABLE authors (
