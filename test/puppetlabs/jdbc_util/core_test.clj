@@ -47,6 +47,19 @@
 (defn find-author [rows name]
   (first (filter #(= name (:name %)) rows)))
 
+(deftest db-up?-test
+  (testing "db-up?"
+    (testing "returns true when the DB is up"
+      (is (db-up? test-db)))
+
+    (testing "returns false if the query function throws an exception"
+      (with-redefs [jdbc/query (fn [_ _] (throw (Exception. "what DB?")))]
+        (is (false? (db-up? nil)))))
+
+    (testing "returns false if the arithmetic doesn't check out"
+      (with-redefs [jdbc/query (fn [_ _] [{:answer 49}])]
+        (is (false? (db-up? nil)))))))
+
 (deftest ^:database querying
   (testing "works within a transaction"
     (let [rows (jdbc/with-db-transaction [test-db test-db]
