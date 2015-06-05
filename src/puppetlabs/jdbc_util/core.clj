@@ -4,6 +4,14 @@
             [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]))
 
+(defn db-up?
+  [db-spec]
+  (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
+             [{:keys [answer]}] (jdbc/query db-spec [select-42])]
+         (= answer 42))
+    (catch Exception _
+      false)))
+
 (defn public-tables
   "Get the names of all public tables in a database"
   [db-spec]
