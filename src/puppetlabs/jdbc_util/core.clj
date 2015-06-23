@@ -4,13 +4,20 @@
             [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]))
 
+(defmacro with-timeout [timeout-s default & body]
+  `(let [f# (future (do ~@body))
+         result# (deref f# (* 1000 ~timeout-s) ~default)]
+     (future-cancel f#)
+     result#))
+
 (defn db-up?
   [db-spec]
-  (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
-             [{:keys [answer]}] (jdbc/query db-spec [select-42])]
-         (= answer 42))
-    (catch Exception _
-      false)))
+  (with-timeout 1 false
+    (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
+               [{:keys [answer]}] (jdbc/query db-spec [select-42])]
+           (= answer 42))
+         (catch Exception _
+           false))))
 
 (defn public-tables
   "Get the names of all public tables in a database"
