@@ -8,9 +8,9 @@ before_script:
   - psql -c 'create database jdbc_util_test;' -U postgres
 env:
   global:
-    - TEST_DBUSER=postgres
-    - TEST_DBPASS=
-    - TEST_DBSUBNAME=//127.0.0.1:5432/jdbc_util_test
+    - JDBCUTIL_DBNAME=//127.0.0.1:5432/jdbc_util_test
+    - JDBCUTIL_DBUSER=postgres
+    - JDBCUTIL_DBPASS=
 addons:
   postgresql: "9.3"
 notifications:
