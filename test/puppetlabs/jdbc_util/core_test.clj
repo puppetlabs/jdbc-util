@@ -4,11 +4,12 @@
             [clojure.java.jdbc :as jdbc]
             [puppetlabs.jdbc-util.core :refer :all]))
 
-(def test-db {:classname "org.postgresql.Driver"
-              :subprotocol "postgresql"
-              :subname (or (System/getenv "TEST_DBSUBNAME") "jdbc_util_test")
-              :user (or (System/getenv "TEST_DBUSER") "jdbc_util_test")
-              :password (or (System/getenv "TEST_DBPASS") "foobar")})
+(def test-db
+  {:classname "org.postgresql.Driver"
+   :subprotocol "postgresql"
+   :subname (or (System/getenv "JDBCUTIL_DBNAME") "jdbc_util_test")
+   :user (or (System/getenv "JDBCUTIL_DBUSER") "jdbc_util_test")
+   :password (or (System/getenv "JDBCUTIL_DBPASS") "foobar")})
 
 (defn setup-db [db]
   (jdbc/execute! db ["CREATE TABLE authors (
@@ -33,13 +34,7 @@
 
 (use-fixtures :once
               (fn [f]
-                (let [env     #(System/getenv %)
-                      test-db (if (env "JDBCUTIL_DBNAME")
-                                (merge test-db
-                                       {:subname (env "JDBCUTIL_DBNAME")
-                                        :user (env "JDBCUTIL_DBUSER")
-                                        :password (env "JDBCUTIL_PASS")})
-                                test-db)]
+                (let [env #(System/getenv %)]
                   (drop-public-tables! test-db)
                   (setup-db test-db)
                   (f))))
