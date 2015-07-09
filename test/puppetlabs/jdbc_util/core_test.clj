@@ -59,6 +59,11 @@
       (with-redefs [jdbc/query (fn [_ _] (Thread/sleep 2000) [{:answer 42}])]
         (is (false? (db-up? nil)))))))
 
+(deftest connection-pool-test
+  (testing "connection-pool returns a usable DB spec"
+    (let [pooled-db (connection-pool test-db)]
+      (is (db-up? pooled-db)))))
+
 (deftest ^:database querying
   (testing "works within a transaction"
     (let [rows (jdbc/with-db-transaction [test-db test-db]
