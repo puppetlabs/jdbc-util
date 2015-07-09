@@ -1,8 +1,24 @@
 (ns puppetlabs.jdbc-util.core
-  (:import java.util.regex.Pattern)
+  (:import com.jolbox.bonecp.BoneCPDataSource
+           java.util.regex.Pattern)
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]))
+
+(defn connection-pool
+  "Given a DB spec map containing :subprotocol, :subname, :user, and :password
+  keys, return a pooled DB spec map (one containing just the :datasource key
+  with a pooled DataSource object as the value). The returned pooled DB spec
+  can be passed directly as the first argument to clojure.java.jdbc's
+  functions."
+  [db-spec]
+  (let [ds (doto (BoneCPDataSource.)
+             (.setJdbcUrl (str "jdbc:"
+                               (:subprotocol db-spec) ":"
+                               (:subname db-spec)))
+             (.setUsername (:user db-spec))
+             (.setPassword (:password db-spec)))]
+    {:datasource ds}))
 
 (defmacro with-timeout [timeout-s default & body]
   `(let [f# (future (do ~@body))
