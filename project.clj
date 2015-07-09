@@ -7,6 +7,7 @@
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
+  :pedantic :abort
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.3-1100-jdbc41"]
@@ -21,5 +22,4 @@
   :deploy-repositories [["releases" {:url "https://clojars.org/repo"
                                      :username :env/clojars_jenkins_username
                                      :password :env/clojars_jenkins_password
-                                     :sign-releases false}]]
-)
+                                     :sign-releases false}]])
