@@ -62,7 +62,19 @@
 (deftest connection-pool-test
   (testing "connection-pool returns a usable DB spec"
     (let [pooled-db (connection-pool test-db)]
-      (is (db-up? pooled-db)))))
+      (is (db-up? pooled-db))
+
+      (testing "pooled connections retry, rather than failing immediately"
+        (let [bad-db (assoc test-db :subname "//example.com/xyz")
+              bad-pool (-> (connection-pool bad-db)
+                         (update-in [:datasource] #(doto % (.setConnectionTimeout 5000))))
+              start (System/currentTimeMillis)
+              result (try (jdbc/query bad-pool ["dummy"])
+                          (catch java.sql.SQLTimeoutException _
+                            ::timeout))
+              end (System/currentTimeMillis)]
+          (is (<= 5000 (- end start)))
+          (is (= ::timeout result)))))))
 
 (deftest ^:database querying
   (testing "works within a transaction"

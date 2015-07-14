@@ -11,7 +11,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.3-1100-jdbc41"]
-                 [com.jolbox/bonecp "0.8.0.RELEASE"]
+                 [com.zaxxer/HikariCP-java6 "2.3.9"]
                  [puppetlabs/kitchensink ~ks-version]]
 
   :plugins [[lein-release "1.0.5"]]
