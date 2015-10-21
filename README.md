@@ -9,8 +9,14 @@ Labs._
 
 Do not use this. It is a work in progress.
 
+## Support
+
+To file a bug, please open a Github issue against this project. Bugs and PRs are
+addressed on a best-effort basis. Puppet Labs does not guarantee support for
+this project.
+
 ## License
 
-Copyright © 2014 Puppet Labs
+Copyright © 2015 Puppet Labs
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
