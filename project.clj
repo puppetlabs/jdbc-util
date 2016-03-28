@@ -8,7 +8,7 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
   :pedantic :abort
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.3-1100-jdbc41"]
                  [com.zaxxer/HikariCP-java6 "2.3.9"]
