@@ -10,7 +10,7 @@
   :pedantic :abort
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.3.2"]
-                 [org.postgresql/postgresql "9.3-1100-jdbc41"]
+                 [org.postgresql/postgresql "9.4.1208"]
                  [com.zaxxer/HikariCP-java6 "2.3.9"]
                  [puppetlabs/kitchensink ~ks-version]]
 
