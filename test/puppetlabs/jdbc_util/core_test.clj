@@ -70,7 +70,7 @@
                          (update-in [:datasource] #(doto % (.setConnectionTimeout 5000))))
               start (System/currentTimeMillis)
               result (try (jdbc/query bad-pool ["dummy"])
-                          (catch java.sql.SQLTimeoutException _
+                          (catch java.sql.SQLTransientConnectionException _
                             ::timeout))
               end (System/currentTimeMillis)]
           (is (<= 5000 (- end start)))

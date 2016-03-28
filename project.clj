@@ -11,7 +11,7 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.4.1208"]
-                 [com.zaxxer/HikariCP-java6 "2.3.9"]
+                 [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]]
 
   :plugins [[lein-release "1.0.5"]]
