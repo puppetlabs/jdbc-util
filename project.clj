@@ -7,7 +7,7 @@
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
-  :pedantic :abort
+  :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.4.1208"]
