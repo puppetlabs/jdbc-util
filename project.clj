@@ -14,6 +14,8 @@
                  [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]]
 
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-simple "1.7.12"]]}}
+
   :plugins [[lein-release "1.0.5"]]
 
   :lein-release {:scm :git
