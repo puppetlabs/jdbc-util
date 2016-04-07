@@ -3,7 +3,10 @@
             [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.core-test :as core-test]
             [puppetlabs.jdbc-util.pool :as pool])
-  (:import com.zaxxer.hikari.HikariConfig))
+  (:import com.zaxxer.hikari.HikariConfig
+           java.io.Closeable
+           [java.sql Connection SQLTransientConnectionException]
+           javax.sql.DataSource))
 
 (deftest pool-creation
   (let [test-pool (-> core-test/test-db
@@ -70,3 +73,38 @@
       (testing "can set data-source-class-name"
         (is (= "org.postgresql.ds.PGSimpleDataSource"
                (.getDataSourceClassName config)))))))
+
+(deftest delayed-init
+  (let [ready (atom false)
+        retries (atom 0)
+        mock-connection (reify
+                          Connection
+                          Closeable
+                          (close [_] nil))
+        mock-ds (reify
+                  DataSource
+                  (getConnection [_]
+                    (if @ready
+                      mock-connection
+                      (do
+                        (swap! retries inc)
+                        (Thread/sleep 500)
+                        (throw (SQLTransientConnectionException. "oops")))))
+                  (getConnection [this user pass]
+                    (.getConnection this)))]
+    (testing "the pool retries until it gets a connection"
+      (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
+        (is (thrown? SQLTransientConnectionException
+                     (.getConnection (:datasource wrapped))))
+        (Thread/sleep 2000)
+        (swap! ready (constantly true))
+        (Thread/sleep 600)
+        (.getConnection (:datasource wrapped))
+        (is (<= 4 @retries 5))))  ; allow for some variance due to timing
+
+    (testing "if the init-fn throws an exception it doesn't give out connections"
+      (swap! ready (constantly true))  ; don't depend on state from the previous test
+      (let [wrapped (pool/wrap-with-delayed-init
+                     mock-ds (fn [_] (throw (RuntimeException.))) 1)]
+        (is (thrown? java.util.concurrent.ExecutionException
+                     (.getConnection (:datasource wrapped))))))))
