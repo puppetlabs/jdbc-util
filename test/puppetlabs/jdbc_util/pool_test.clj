@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.core-test :as core-test]
-            [puppetlabs.jdbc-util.pool :as pool])
+            [puppetlabs.jdbc-util.pool :as pool]
+            [clojure.java.jdbc :as jdbc])
   (:import com.zaxxer.hikari.HikariConfig
            java.io.Closeable
            [java.sql Connection SQLTransientConnectionException]
@@ -102,9 +103,13 @@
         (.getConnection (:datasource wrapped))
         (is (<= 4 @retries 5))))  ; allow for some variance due to timing
 
-    (testing "if the init-fn throws an exception it doesn't give out connections"
-      (swap! ready (constantly true))  ; don't depend on state from the previous test
-      (let [wrapped (pool/wrap-with-delayed-init
-                     mock-ds (fn [_] (throw (RuntimeException.))) 1)]
-        (is (thrown? java.util.concurrent.ExecutionException
-                     (.getConnection (:datasource wrapped))))))))
+    ))
+
+(deftest delayed-init-real-db
+  (let [config (-> core-test/test-db
+                   pool/spec->hikari-options
+                   pool/options->hikari-config)]
+    (testing "if the init-fn throws an exception it continues to hand out connections normally"
+      (let [wrapped (pool/connection-pool-with-delayed-init
+                     config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+        (is (= [{:a 1}] (jdbc/query wrapped ["select 1 as a"])))))) )

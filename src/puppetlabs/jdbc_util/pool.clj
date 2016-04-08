@@ -62,7 +62,9 @@
             (if-let [result
                      (try
                        (with-open [conn (.getConnection datasource)]
-                         (init-fn conn)
+                         (try (init-fn conn)
+                              (catch Exception e
+                                (log/error e "An error was encountered while running the initialization function provided to the connection pool.")))
                          datasource)
                        (catch SQLTransientConnectionException e
                          (log/warn e "Error while attempting to connect to database, retrying.")))]
