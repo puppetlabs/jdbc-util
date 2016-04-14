@@ -1,10 +1,11 @@
 (ns puppetlabs.jdbc-util.pool-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.core-test :as core-test]
-            [puppetlabs.jdbc-util.pool :as pool]
-            [clojure.java.jdbc :as jdbc])
-  (:import com.zaxxer.hikari.HikariConfig
+            [puppetlabs.jdbc-util.pool :as pool])
+  (:import com.codahale.metrics.health.HealthCheckRegistry
+           [com.zaxxer.hikari HikariConfig HikariDataSource]
            java.io.Closeable
            [java.sql Connection SQLTransientConnectionException]
            javax.sql.DataSource))
@@ -82,28 +83,30 @@
                           Connection
                           Closeable
                           (close [_] nil))
-        mock-ds (reify
-                  DataSource
-                  (getConnection [_]
-                    (if @ready
-                      mock-connection
-                      (do
-                        (swap! retries inc)
-                        (Thread/sleep 500)
-                        (throw (SQLTransientConnectionException. "oops")))))
-                  (getConnection [this user pass]
-                    (.getConnection this)))]
+        health-registry (atom nil)
+        mock-ds (proxy [HikariDataSource] []
+                  (getConnection
+                    ([]
+                     (if @ready
+                       mock-connection
+                       (do
+                         (swap! retries inc)
+                         (Thread/sleep 500)
+                         (throw (SQLTransientConnectionException. "oops")))))
+                    ([user pass]
+                     (.getConnection this))))]
     (testing "the pool retries until it gets a connection"
       (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
         (is (thrown? SQLTransientConnectionException
                      (.getConnection (:datasource wrapped))))
         (Thread/sleep 2000)
+        (is (= {:state :starting}
+               (pool/status (:datasource wrapped))))
         (swap! ready (constantly true))
         (Thread/sleep 600)
         (.getConnection (:datasource wrapped))
-        (is (<= 4 @retries 5))))  ; allow for some variance due to timing
-
-    ))
+        ;; allow for some variance due to timing
+        (is (<= 4 @retries 5))))))
 
 (deftest delayed-init-real-db
   (let [config (-> core-test/test-db
@@ -113,3 +116,15 @@
       (let [wrapped (pool/connection-pool-with-delayed-init
                      config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
         (is (= [{:a 1}] (jdbc/query wrapped ["select 1 as a"])))))) )
+
+(deftest health-check
+  (let [health-registry (HealthCheckRegistry.)
+        test-pool (-> core-test/test-db
+                      pool/spec->hikari-options
+                      (assoc :health-check-registry health-registry)
+                      pool/options->hikari-config
+                      (pool/connection-pool-with-delayed-init identity 5000))]
+    (.getConnection (:datasource test-pool))
+    (is (= {:state :ready}
+           (pool/status (:datasource test-pool))))
+    (.close (:datasource test-pool))))

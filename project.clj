@@ -12,7 +12,9 @@
                  [org.clojure/java.jdbc "0.3.2"]
                  [org.postgresql/postgresql "9.4.1208"]
                  [com.zaxxer/HikariCP "2.4.3"]
-                 [puppetlabs/kitchensink ~ks-version]]
+                 [puppetlabs/kitchensink ~ks-version]
+                 [io.dropwizard.metrics/metrics-core "3.1.2"]
+                 [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]]
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-simple "1.7.12"]]}}
 
