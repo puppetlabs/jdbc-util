@@ -52,10 +52,11 @@
   "Wraps a connection pool that loops trying to get a connection, and then runs
   init-fn (with the connection as argument) before returning any connections to
   the application. Accepts a timeout in ms that's used when deferencing the
-  future. The datasource should have initialization-fail-fast set before being
-  created or this is pointless."
+  future and by the status check. The datasource should have
+  initialization-fail-fast set before being created or this is pointless."
   [^HikariDataSource datasource init-fn timeout]
   (when-not (.getHealthCheckRegistry datasource)
+    (.addHealthCheckProperty datasource "connectivityCheckTimeoutMs" (str timeout))
     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
   (let [init-result (atom nil)
         pool-future
@@ -100,8 +101,7 @@
             (cond-> {:state (if healthy?
                               :ready
                               :error)}
-              (not healthy?) (merge {:error (.getError health-result)
-                                     :message (.getMessage health-result)})))
+              (not healthy?) (merge {:message (.getMessage health-result)})))
           {:state :starting})))))
 
 (defn connection-pool-with-delayed-init

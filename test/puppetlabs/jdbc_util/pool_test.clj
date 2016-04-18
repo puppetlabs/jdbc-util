@@ -109,10 +109,8 @@
         (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))))) )
 
 (deftest health-check
-  (let [health-registry (HealthCheckRegistry.)
-        test-pool (-> core-test/test-db
+  (let [test-pool (-> core-test/test-db
                       pool/spec->hikari-options
-                      (assoc :health-check-registry health-registry)
                       pool/options->hikari-config
                       (pool/connection-pool-with-delayed-init identity 5000))]
     (.getConnection test-pool)
