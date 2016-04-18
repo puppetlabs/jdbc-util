@@ -89,13 +89,13 @@
     (testing "the pool retries until it gets a connection"
       (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
         (is (thrown? SQLTransientConnectionException
-                     (.getConnection (:datasource wrapped))))
+                     (.getConnection wrapped)))
         (Thread/sleep 2000)
         (is (= {:state :starting}
-               (pool/status (:datasource wrapped))))
+               (pool/status wrapped)))
         (swap! ready (constantly true))
         (Thread/sleep 600)
-        (.getConnection (:datasource wrapped))
+        (.getConnection wrapped)
         ;; allow for some variance due to timing
         (is (<= 4 @retries 5))))))
 
@@ -106,7 +106,7 @@
     (testing "if the init-fn throws an exception it continues to hand out connections normally"
       (let [wrapped (pool/connection-pool-with-delayed-init
                      config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
-        (is (= [{:a 1}] (jdbc/query wrapped ["select 1 as a"])))))) )
+        (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))))) )
 
 (deftest health-check
   (let [health-registry (HealthCheckRegistry.)
@@ -115,7 +115,7 @@
                       (assoc :health-check-registry health-registry)
                       pool/options->hikari-config
                       (pool/connection-pool-with-delayed-init identity 5000))]
-    (.getConnection (:datasource test-pool))
+    (.getConnection test-pool)
     (is (= {:state :ready}
-           (pool/status (:datasource test-pool))))
-    (.close (:datasource test-pool))))
+           (pool/status test-pool)))
+    (.close test-pool)))

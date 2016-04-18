@@ -73,37 +73,36 @@
                          (log/warn e "Error while attempting to connect to database, retrying.")))]
               result
               (recur))))]
-    {:datasource
-     (reify
-       DataSource
-       (getConnection [this]
-         (.getConnection (or (deref pool-future timeout nil)
-                             (throw (SQLTransientConnectionException. "Timeout waiting for the database pool to become ready.")))))
-       (getConnection [this username password]
-         (.getConnection (or (deref pool-future timeout nil)
-                             (throw (SQLTransientConnectionException. "Timeout waiting for the database pool to become ready.")))
-                         username
-                         password))
+    (reify
+      DataSource
+      (getConnection [this]
+        (.getConnection (or (deref pool-future timeout nil)
+                            (throw (SQLTransientConnectionException. "Timeout waiting for the database pool to become ready.")))))
+      (getConnection [this username password]
+        (.getConnection (or (deref pool-future timeout nil)
+                            (throw (SQLTransientConnectionException. "Timeout waiting for the database pool to become ready.")))
+                        username
+                        password))
 
-       Closeable
-       (close [this]
-         (.close datasource))
+      Closeable
+      (close [this]
+        (.close datasource))
 
-       PoolStatus
-       (status [this]
-         (if (realized? pool-future)
-           (let [connectivity-check (str (.getPoolName datasource)
-                                         ".pool.ConnectivityCheck")
-                 health-result (.runHealthCheck
-                                (.getHealthCheckRegistry datasource)
-                                connectivity-check)
-                 healthy? (.isHealthy health-result)]
-             (cond-> {:state (if healthy?
-                               :ready
-                               :error)}
-               (not healthy?) (merge {:error (.getError health-result)
-                                      :message (.getMessage health-result)})))
-           {:state :starting})))}))
+      PoolStatus
+      (status [this]
+        (if (realized? pool-future)
+          (let [connectivity-check (str (.getPoolName datasource)
+                                        ".pool.ConnectivityCheck")
+                health-result (.runHealthCheck
+                               (.getHealthCheckRegistry datasource)
+                               connectivity-check)
+                healthy? (.isHealthy health-result)]
+            (cond-> {:state (if healthy?
+                              :ready
+                              :error)}
+              (not healthy?) (merge {:error (.getError health-result)
+                                     :message (.getMessage health-result)})))
+          {:state :starting})))))
 
 (defn connection-pool-with-delayed-init
   "Create a connection pool that loops trying to get a connection, and then runs
