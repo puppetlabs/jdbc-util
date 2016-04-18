@@ -10,15 +10,6 @@
            [java.sql Connection SQLTransientConnectionException]
            javax.sql.DataSource))
 
-(deftest pool-creation
-  (let [test-pool (-> core-test/test-db
-                      pool/spec->hikari-options
-                      pool/options->hikari-config
-                      pool/connection-pool)]
-    (testing "can create a connection pool from a db spec"
-      (is (core/db-up? test-pool)))
-    (.close (:datasource test-pool))))
-
 (deftest spec->hikari-config
   (let [spec {:subprotocol "postgresql"
               :subname "jdbc_util_test?ssl=true&something=false"

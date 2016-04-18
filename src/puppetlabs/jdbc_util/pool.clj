@@ -7,11 +7,6 @@
            java.sql.SQLTransientConnectionException
            javax.sql.DataSource))
 
-(defn connection-pool
-  [^HikariConfig config]
-  (let [ds (HikariDataSource. config)]
-    {:datasource ds}))
-
 (defn- set-option
   [^HikariConfig config option value]
   (case option
