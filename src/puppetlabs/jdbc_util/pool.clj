@@ -68,10 +68,10 @@
                          (try (init-fn conn)
                               (catch Exception e
                                 (swap! init-result (constantly e))
-                                (log/errorf e "An error was encountered while running the initialization function provided to the connection pool.")))
+                                (log/errorf e "%s - An error was encountered during initialization." (.getPoolName datasource))))
                          datasource)
                        (catch SQLTransientConnectionException e
-                         (log/warn e "Error while attempting to connect to database, retrying.")))]
+                         (log/warnf e "%s - Error while attempting to connect to database, retrying." (.getPoolName datasource))))]
               result
               (recur))))]
     (reify
