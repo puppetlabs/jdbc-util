@@ -7,12 +7,16 @@
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
-  :pedantic :abort
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :pedantic? :abort
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.3.2"]
-                 [org.postgresql/postgresql "9.3-1100-jdbc41"]
-                 [com.zaxxer/HikariCP-java6 "2.3.9"]
-                 [puppetlabs/kitchensink ~ks-version]]
+                 [org.postgresql/postgresql "9.4.1208"]
+                 [com.zaxxer/HikariCP "2.4.3"]
+                 [puppetlabs/kitchensink ~ks-version]
+                 [io.dropwizard.metrics/metrics-core "3.1.2"]
+                 [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]]
+
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-simple "1.7.12"]]}}
 
   :plugins [[lein-release "1.0.5"]]
 
