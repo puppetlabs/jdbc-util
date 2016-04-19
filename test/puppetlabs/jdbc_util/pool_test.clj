@@ -106,7 +106,10 @@
     (testing "if the init-fn throws an exception it continues to hand out connections normally"
       (let [wrapped (pool/connection-pool-with-delayed-init
                      config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
-        (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))))) )
+        (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
+        (is (= {:state :error
+                :messages ["Initialization resulted in an error: test exception"]}
+               (pool/status wrapped)))))))
 
 (deftest health-check
   (let [test-pool (-> core-test/test-db

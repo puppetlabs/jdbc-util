@@ -46,7 +46,8 @@
       (dissoc :subprotocol :subname)))
 
 (defprotocol PoolStatus
-  (status [this] "Get a map representing the status of a connection pool."))
+  (status [this] "Get a map representing the status of a connection pool.")
+  (init-error [this] "Return any exception raised by the init function (nil if none)."))
 
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs
@@ -58,7 +59,7 @@
   (when-not (.getHealthCheckRegistry datasource)
     (.addHealthCheckProperty datasource "connectivityCheckTimeoutMs" (str timeout))
     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
-  (let [init-result (atom nil)
+  (let [init-error (atom nil)
         pool-future
         (future
           (loop []
@@ -67,11 +68,12 @@
                        (with-open [conn (.getConnection datasource)]
                          (try (init-fn conn)
                               (catch Exception e
-                                (swap! init-result (constantly e))
+                                (swap! init-error (constantly e))
                                 (log/errorf e "%s - An error was encountered during initialization." (.getPoolName datasource))))
                          datasource)
                        (catch SQLTransientConnectionException e
-                         (log/warnf e "%s - Error while attempting to connect to database, retrying." (.getPoolName datasource))))]
+                         (log/warnf e "%s - Error while attempting to connect to database, retrying." (.getPoolName datasource))
+                         nil))]
               result
               (recur))))]
     (reify
@@ -97,12 +99,20 @@
                 health-result (.runHealthCheck
                                (.getHealthCheckRegistry datasource)
                                connectivity-check)
-                healthy? (.isHealthy health-result)]
+                healthy? (and (.isHealthy health-result)
+                              (nil? @init-error))
+                messages (remove nil? [(some->> @init-error
+                                                (.getMessage)
+                                                (format "Initialization resulted in an error: %s"))
+                                       (.getMessage health-result)])]
             (cond-> {:state (if healthy?
                               :ready
                               :error)}
-              (not healthy?) (merge {:message (.getMessage health-result)})))
-          {:state :starting})))))
+              (not healthy?) (merge {:messages messages})))
+          {:state :starting}))
+
+      (init-error [this]
+        @init-error))))
 
 (defn connection-pool-with-delayed-init
   "Create a connection pool that loops trying to get a connection, and then runs
