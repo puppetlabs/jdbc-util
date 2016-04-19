@@ -4,7 +4,7 @@
   (:import com.codahale.metrics.health.HealthCheckRegistry
            [com.zaxxer.hikari HikariConfig HikariDataSource]
            java.io.Closeable
-           java.sql.SQLTransientConnectionException
+           [java.sql SQLTransientConnectionException SQLTransientException]
            javax.sql.DataSource))
 
 (defn- set-option
@@ -71,7 +71,7 @@
                                 (swap! init-error (constantly e))
                                 (log/errorf e "%s - An error was encountered during initialization." (.getPoolName datasource))))
                          datasource)
-                       (catch SQLTransientConnectionException e
+                       (catch SQLTransientException e
                          (log/warnf e "%s - Error while attempting to connect to database, retrying." (.getPoolName datasource))
                          nil))]
               result
