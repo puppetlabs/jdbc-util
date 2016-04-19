@@ -10,7 +10,7 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.3.2"]
-                 [org.postgresql/postgresql "9.4.1208"]
+                 [org.postgresql/postgresql "9.4.1208.jre7"]
                  [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
