@@ -3,6 +3,7 @@
            java.util.regex.Pattern)
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]))
 
 (defn connection-pool
@@ -35,7 +36,8 @@
     (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
                [{:keys [answer]}] (jdbc/query db-spec [select-42])]
            (= answer 42))
-         (catch Exception _
+         (catch Exception e
+           (log/debug e "db-up? failed")
            false))))
 
 (defn public-tables
