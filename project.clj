@@ -16,7 +16,9 @@
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
                  [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]]
 
-  :profiles {:dev {:dependencies [[org.slf4j/slf4j-simple "1.7.12"]]}}
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.21"]
+                                  [org.slf4j/slf4j-log4j12 "1.7.21"]
+                                  [log4j/log4j "1.2.17"]]}}
 
   :plugins [[lein-release "1.0.5"]]
 
