@@ -56,7 +56,7 @@
         (is (false? (db-up? nil)))))
 
     (testing "returns false if the check times out"
-      (with-redefs [jdbc/query (fn [_ _] (Thread/sleep 2000) [{:answer 42}])]
+      (with-redefs [jdbc/query (fn [_ _] (Thread/sleep 5000) [{:answer 42}])]
         (is (false? (db-up? nil)))))))
 
 (deftest connection-pool-test

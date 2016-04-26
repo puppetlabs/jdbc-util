@@ -32,13 +32,17 @@
 
 (defn db-up?
   [db-spec]
-  (with-timeout 1 false
-    (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
-               [{:keys [answer]}] (jdbc/query db-spec [select-42])]
-           (= answer 42))
-         (catch Exception e
-           (log/debug e "db-up? failed")
-           false))))
+  (let [result (with-timeout 4 :timeout
+                 (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
+                            [{:keys [answer]}] (jdbc/query db-spec [select-42])]
+                        (= answer 42))
+                      (catch Exception e
+                        (log/warn e "Status check of db failed with error:")
+                        false)))]
+    (if (= :timeout result)
+      (do (log/warn "Database status check timed out after 4 seconds.")
+          false)
+      result)))
 
 (defn public-tables
   "Get the names of all public tables in a database"
