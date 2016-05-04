@@ -65,6 +65,7 @@
           (loop []
             (if-let [result
                      (try
+                       ;; Try to get a connection to make sure the db is ready
                        (.close (.getConnection datasource))
                        (try (init-fn {:datasource datasource})
                             (catch Exception e
