@@ -65,12 +65,13 @@
           (loop []
             (if-let [result
                      (try
-                       (with-open [conn (.getConnection datasource)]
-                         (try (init-fn conn)
-                              (catch Exception e
-                                (swap! init-error (constantly e))
-                                (log/errorf e "%s - An error was encountered during initialization." (.getPoolName datasource))))
-                         datasource)
+                       ;; Try to get a connection to make sure the db is ready
+                       (.close (.getConnection datasource))
+                       (try (init-fn {:datasource datasource})
+                            (catch Exception e
+                              (swap! init-error (constantly e))
+                              (log/errorf e "%s - An error was encountered during initialization." (.getPoolName datasource))))
+                       datasource
                        (catch SQLTransientException e
                          (log/warnf e "%s - Error while attempting to connect to database, retrying." (.getPoolName datasource))
                          nil))]
