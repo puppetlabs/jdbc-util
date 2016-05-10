@@ -77,12 +77,16 @@ used, otherwise one will be created automatically.
 
 ## Support
 
-To file a bug, please open a Github issue against this project. Bugs and PRs are
-addressed on a best-effort basis. Puppet Labs does not guarantee support for
+To file a bug, please open a Jira ticket against this project. Bugs and PRs are
+addressed on a best-effort basis. Puppet Inc. does not guarantee support for
 this project.
+
+## Maintainenance
+Maintainers: Steve Axthelm <steve@puppet.com>
+Tickets: [Puppet Enterprise](https://tickets.puppetlabs.com/browse/ENTERPRISE/). Make sure to set component to "jdbc-util".
 
 ## License
 
-Copyright © 2015 Puppet Labs
+Copyright © 2016 Puppet, Inc.
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
