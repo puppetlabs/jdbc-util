@@ -63,10 +63,10 @@
   ([result-set]
    (convert-result-arrays vec result-set))
   ([f result-set]
-   (let [convert #(cond
-                    (ks/array? %) (f %)
-                    (isa? (class %) java.sql.Array) (f (.getArray %))
-                    :else %)]
+   (let [convert (fn [v] (cond
+                           (ks/array? v) (f v)
+                           (instance? java.sql.Array v) (f (.getArray v))
+                           :else v))]
      (map #(ks/mapvals convert %) result-set))))
 
 (defn query
