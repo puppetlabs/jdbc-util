@@ -1,4 +1,5 @@
 (ns puppetlabs.jdbc-util.core-test
+  (:import [java.util UUID])
   (:require [clojure.test :refer :all]
             [clojure.walk :refer [keywordize-keys]]
             [clojure.java.jdbc :as jdbc]
@@ -18,6 +19,7 @@
   (jdbc/execute! db ["CREATE TABLE books (
                         title TEXT PRIMARY KEY,
                         author TEXT REFERENCES authors (name))"])
+(jdbc/execute! db ["CREATE TABLE weird_junk ( id UUID PRIMARY KEY )"])
   (jdbc/insert! db :authors
                 {:name "kafka"  :favorite_color "black"}
                 {:name "borges" :favorite_color "purple"}
@@ -30,7 +32,8 @@
                 {:title "library of babel"            :author "borges"}
                 {:title "the garden of forking paths" :author "borges"}
                 {:title "the voyage out"              :author "woolf"}
-                {:title "the waves"                   :author "woolf"}))
+                {:title "the waves"                   :author "woolf"})
+  (jdbc/insert! db :weird_junk {:id (UUID/randomUUID)}))
 
 (use-fixtures :once
               (fn [f]
@@ -137,6 +140,11 @@
           result (first (convert-result-arrays set rows))]
       (is (set? (:three result)))
       (is (= #{1 2 3} (:three result))))))
+
+(deftest convert-result-pgobjects-test
+  (testing "PGobjects are converted to their values"
+    (let [[row] (query test-db ["SELECT * FROM weird_junk"])]
+      (is (instance? UUID (:id row))))))
 
 (deftest submap-aggregation
   (testing "handles nils"

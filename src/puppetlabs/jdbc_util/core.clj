@@ -1,6 +1,7 @@
 (ns puppetlabs.jdbc-util.core
   (:import [com.zaxxer.hikari HikariDataSource]
-           java.util.regex.Pattern)
+           [java.util.regex Pattern]
+           [org.postgresql.util PGobject])
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -69,14 +70,24 @@
                            :else v))]
      (map #(ks/mapvals convert %) result-set))))
 
+(defn convert-result-pgobjects
+  "Converts PGObjects in a result set to be the value that they contain.
+  Values which aren't arrays are unchanged."
+  [result-set]
+  (let [val-if-pgobj (fn [v] (if (instance? PGobject v)
+                               (.getValue v)
+                               v))]
+    (map #(ks/mapvals val-if-pgobj %) result-set)))
+
 (defn query
   "An implementation of query that returns a fully evaluated result (no
-  JDBCArray objects, etc)"
+  lazy sequences, JDBCArray objects, or PGObjects)."
   [db sql-and-params]
   (let [convert (fn [rs]
                   (doall
-                    (convert-result-arrays vec
-                                           (jdbc/result-set-seq rs))))]
+                    (->> (jdbc/result-set-seq rs)
+                      (convert-result-arrays vec)
+                      (convert-result-pgobjects))))]
     (jdbc/db-query-with-resultset db sql-and-params convert)))
 
 (defn ordered-group-by
