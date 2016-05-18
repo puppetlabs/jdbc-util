@@ -20,19 +20,19 @@
                         title TEXT PRIMARY KEY,
                         author TEXT REFERENCES authors (name))"])
 (jdbc/execute! db ["CREATE TABLE weird_junk ( id UUID PRIMARY KEY )"])
-  (jdbc/insert! db :authors
-                {:name "kafka"  :favorite_color "black"}
-                {:name "borges" :favorite_color "purple"}
-                {:name "woolf"  :favorite_color "yellow"}
-                {:name "no one" :favorite_color "gray"})
-  (jdbc/insert! db :books
-                {:title "the castle"                  :author "kafka"}
-                {:title "the trial"                   :author "kafka"}
-                {:title "the aleph"                   :author "borges"}
-                {:title "library of babel"            :author "borges"}
-                {:title "the garden of forking paths" :author "borges"}
-                {:title "the voyage out"              :author "woolf"}
-                {:title "the waves"                   :author "woolf"})
+  (jdbc/insert-multi! db :authors
+                      [{:name "kafka"  :favorite_color "black"}
+                       {:name "borges" :favorite_color "purple"}
+                       {:name "woolf"  :favorite_color "yellow"}
+                       {:name "no one" :favorite_color "gray"}])
+  (jdbc/insert-multi! db :books
+                      [{:title "the castle"                  :author "kafka"}
+                       {:title "the trial"                   :author "kafka"}
+                       {:title "the aleph"                   :author "borges"}
+                       {:title "library of babel"            :author "borges"}
+                       {:title "the garden of forking paths" :author "borges"}
+                       {:title "the voyage out"              :author "woolf"}
+                       {:title "the waves"                   :author "woolf"}])
   (jdbc/insert! db :weird_junk {:id (UUID/randomUUID)}))
 
 (use-fixtures :once
