@@ -221,3 +221,17 @@
               "2.0.0"
               ["doohickey" "jobby" "thingie"]
               ["US Robotics" "Omnicorp" "Cyberdyne Systems" "Morgan Industries"]])))))
+
+(deftest has-extension-test
+  (testing "look for db extension that exists"
+    (is (has-extension test-db "plpgsql")))
+
+  (testing "look for db extension that does not exist"
+    (is (not (has-extension test-db "notanextension")))))
+
+(deftest wrap-ddl-for-pglogical-test
+  (is (= (str "do 'begin perform"
+              " pglogical.replicate_ddl_command(''set local search_path to public;"
+              " create table test(a integer);''"
+              "); end;';")
+         (wrap-ddl-for-pglogical "create table test(a integer);" "public"))))
