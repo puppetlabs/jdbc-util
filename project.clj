@@ -1,6 +1,6 @@
 (def ks-version "1.0.0")
 
-(defproject puppetlabs/jdbc-util "0.3.2-SNAPSHOT"
+(defproject puppetlabs/jdbc-util "0.4.0-SNAPSHOT"
   :description "Common JDBC helpers for use in Puppet Labs projects"
   :url "https://github.com/puppetlabs/jdbc-util"
 
@@ -9,7 +9,7 @@
 
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/java.jdbc "0.3.2"]
+                 [org.clojure/java.jdbc "0.6.1"]
                  [org.postgresql/postgresql "9.4.1208.jre7"]
                  [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]

@@ -56,7 +56,7 @@
   "Drops all public tables in a database. Super dangerous."
   [db-spec]
   (if-let [tables (seq (public-tables db-spec))]
-    (apply jdbc/db-do-commands db-spec (map #(format "DROP TABLE %s CASCADE" %) (seq tables)))))
+    (jdbc/db-do-commands db-spec (map #(format "DROP TABLE %s CASCADE" %) tables))))
 
 (defn convert-result-arrays
   "Converts Java and JDBC arrays in a result set using the provided
