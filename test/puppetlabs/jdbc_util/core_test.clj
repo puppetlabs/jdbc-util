@@ -224,10 +224,10 @@
 
 (deftest has-extension-test
   (testing "look for db extension that exists"
-    (is (has-extension test-db "plpgsql")))
+    (is (has-extension? test-db "plpgsql")))
 
   (testing "look for db extension that does not exist"
-    (is (not (has-extension test-db "notanextension")))))
+    (is (not (has-extension? test-db "notanextension")))))
 
 (deftest wrap-ddl-for-pglogical-test
   (is (= (str "do 'begin perform"

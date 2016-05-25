@@ -157,16 +157,16 @@
                        seq-params-w-indices)]
     (vec (conj (flatten parameters) sql'))))
 
-(defn has-extension [db extension]
+(defn has-extension? [db extension]
   (-> (jdbc/query db ["select count(*) from pg_extension where extname = ?" extension])
       first
       :count
       pos?))
 
-(defn has-pglogical-extension [db]
-  (has-extension db "pglogical"))
+(defn has-pglogical-extension? [db]
+  (has-extension? db "pglogical"))
 
-(defn- unsafe-escape-sql-string
+(defn- unsafe-escape-sql-quotes
   "Escape the given string so it can be \"safely\" passed as a string parameter
   to an sql query."
   [s]
@@ -178,9 +178,20 @@
   it won't return anything."
   [sql schema]
   (str "do 'begin perform "
-       (unsafe-escape-sql-string
+       (unsafe-escape-sql-quotes
         (str "pglogical.replicate_ddl_command('"
              "set local search_path to " schema "; "
-             (unsafe-escape-sql-string sql)
+             (unsafe-escape-sql-quotes sql)
              "');"))
        " end;';"))
+
+(defn update-pglogical-replication-set
+  "Update the default pglogical replication set to replicate all tables in the
+  given schema."
+  [db schema]
+  (jdbc/query db
+              (str "select pglogical.replication_set_add_all_tables("
+                   "'default',"
+                   "'{\"" schema "\"}',"
+                   "true"
+                   ");")))
