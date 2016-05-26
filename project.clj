@@ -13,6 +13,7 @@
                  [org.postgresql/postgresql "9.4.1208.jre7"]
                  [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]
+                 [puppetlabs/i18n "0.4.0"]
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
                  [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]]
 
@@ -20,7 +21,10 @@
                                   [org.slf4j/slf4j-log4j12 "1.7.21"]
                                   [log4j/log4j "1.2.17"]]}}
 
-  :plugins [[lein-release "1.0.5"]]
+  :plugins [[lein-release "1.0.5"]
+            ;; pin clojure to resolve dependency conflict with lein-release and i18n.
+            [org.clojure/clojure "1.8.0"]
+            [puppetlabs/i18n "0.4.0"]]
 
   :lein-release {:scm :git
                  :deploy-via :lein-deploy}

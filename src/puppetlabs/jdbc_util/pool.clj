@@ -1,6 +1,7 @@
 (ns puppetlabs.jdbc-util.pool
   (:require [clojure.set :as set]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [puppetlabs.i18n.core :refer [tru trs trun]])
   (:import com.codahale.metrics.health.HealthCheckRegistry
            [com.zaxxer.hikari HikariConfig HikariDataSource]
            java.io.Closeable
@@ -25,7 +26,7 @@
     :metric-registry (.setMetricRegistry config value)
     :health-check-registry (.setHealthCheckRegistry config value)
     :pool-name (.setPoolName config value)
-    (throw (IllegalArgumentException. (format "%s is not a supported HikariCP option" (str option))))))
+    (throw (IllegalArgumentException. (tru "{0} is not a supported HikariCP option" (str option))))))
 
 (defn options->hikari-config
   [options]
@@ -70,10 +71,10 @@
                        (try (init-fn {:datasource datasource})
                             (catch Exception e
                               (swap! init-error (constantly e))
-                              (log/errorf e "%s - An error was encountered during initialization." (.getPoolName datasource))))
+                              (log/errorf e (trs "{0} - An error was encountered during initialization." (.getPoolName datasource)))))
                        datasource
                        (catch SQLTransientException e
-                         (log/warnf e "%s - Error while attempting to connect to database, retrying." (.getPoolName datasource))
+                         (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying." (.getPoolName datasource)))
                          nil))]
               result
               (recur))))]
@@ -81,10 +82,10 @@
       DataSource
       (getConnection [this]
         (.getConnection (or (deref pool-future timeout nil)
-                            (throw (SQLTransientConnectionException. "Timeout waiting for the database pool to become ready.")))))
+                            (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))))
       (getConnection [this username password]
         (.getConnection (or (deref pool-future timeout nil)
-                            (throw (SQLTransientConnectionException. "Timeout waiting for the database pool to become ready.")))
+                            (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))
                         username
                         password))
 
@@ -104,7 +105,7 @@
                               (nil? @init-error))
                 messages (remove nil? [(some->> @init-error
                                                 (.getMessage)
-                                                (format "Initialization resulted in an error: %s"))
+                                                (tru "Initialization resulted in an error: {0}"))
                                        (.getMessage health-result)])]
             (cond-> {:state (if healthy?
                               :ready

@@ -1,6 +1,7 @@
 (ns puppetlabs.jdbc-util.pool-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [puppetlabs.i18n.core :refer [with-user-locale string-as-locale]]
             [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.core-test :as core-test]
             [puppetlabs.jdbc-util.pool :as pool])
@@ -109,7 +110,17 @@
         (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
         (is (= {:state :error
                 :messages ["Initialization resulted in an error: test exception"]}
-               (pool/status wrapped)))))))
+               (pool/status wrapped)))))
+
+    (testing "if init-fn throws an exception in a non english locale"
+      (let [eo (string-as-locale "eo")]
+        (with-user-locale eo
+         (let [wrapped (pool/connection-pool-with-delayed-init
+                             config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+                (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
+                (is (= {:state :error
+                        :messages ["This_is_a_translated_string: test exception"]}
+                       (pool/status wrapped)))))))))
 
 (deftest health-check
   (let [test-pool (-> core-test/test-db
