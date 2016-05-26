@@ -15,7 +15,8 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/i18n "0.4.0"]
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
-                 [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]]
+                 [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]
+                 [cheshire "5.5.0"]]
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.21"]
                                   [org.slf4j/slf4j-log4j12 "1.7.21"]

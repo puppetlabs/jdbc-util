@@ -1,6 +1,8 @@
 (ns puppetlabs.jdbc-util.core-test
-  (:import [java.util UUID])
-  (:require [clojure.test :refer :all]
+  (:import [java.util UUID]
+           [org.postgresql.util PSQLException PSQLState])
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [clojure.walk :refer [keywordize-keys]]
             [clojure.java.jdbc :as jdbc]
             [puppetlabs.jdbc-util.core :refer :all]))
@@ -235,3 +237,9 @@
               " create table test(a integer);''"
               "); end;';")
          (wrap-ddl-for-pglogical "create table test(a integer);" "public"))))
+
+(deftest pg-permission-error-middleware-test
+  (let [throwing-handler (fn [_] (throw (PSQLException. "SomeMessage" (PSQLState. "42501"))))
+        wrapped (handle-postgres-permission-errors throwing-handler)
+        response-body (-> (wrapped nil) :body (json/parse-string true))]
+    (is (= "db-permission-error" (:kind response-body)))))
