@@ -1,0 +1,53 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Puppet <docs@puppet.com>
+# This file is distributed under the same license as the puppetlabs.jdbc_util package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: puppetlabs.jdbc_util \n"
+"Report-Msgid-Bugs-To: docs@puppet.com\n"
+"POT-Creation-Date: 2016-05-27 11:42:25\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: src/puppetlabs/jdbc_util/core.clj:42
+msgid "Status check of db failed with error:"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/core.clj:45
+msgid "Database status check timed out after 4 seconds."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/core.clj:143
+msgid "There are no '?'s in the given string"
+msgid_plural "There are not {0} '?'s in the given string"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/puppetlabs/jdbc_util/pool.clj:29
+msgid "{0} is not a supported HikariCP option"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj:74
+msgid "{0} - An error was encountered during initialization."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj:77
+msgid "{0} - Error while attempting to connect to database, retrying."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj:85 src/puppetlabs/jdbc_util/pool.clj:88
+msgid "Timeout waiting for the database pool to become ready."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj:108
+msgid "Initialization resulted in an error: {0}"
+msgstr ""

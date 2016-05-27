@@ -5,6 +5,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [puppetlabs.i18n.core :refer [tru trs trsn]]
             [puppetlabs.kitchensink.core :as ks]))
 
 (defn connection-pool
@@ -38,10 +39,10 @@
                             [{:keys [answer]}] (jdbc/query db-spec [select-42])]
                         (= answer 42))
                       (catch Exception e
-                        (log/warn e "Status check of db failed with error:")
+                        (log/warn e (trs "Status check of db failed with error:"))
                         false)))]
     (if (= :timeout result)
-      (do (log/warn "Database status check timed out after 4 seconds.")
+      (do (log/warn (trs "Database status check timed out after 4 seconds."))
           false)
       result)))
 
@@ -139,7 +140,9 @@
       (let [tail (.substring s (.length ^String match) (.length s))
             replaced (str/replace match #"(.*)\?$" (str "$1" replacement))]
         (str replaced tail))
-      (throw (IllegalArgumentException. (str "there are not " n " '?'s in the given string"))))))
+      (throw (IllegalArgumentException. (trsn "There are no '?'s in the given string"
+                                              "There are not {0} '?'s in the given string"
+                                              n))))))
 
 (defn expand-seq-params
   "A helper for prepared SQL statements with sequential parameters.
