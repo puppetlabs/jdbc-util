@@ -1,8 +1,9 @@
 (ns puppetlabs.jdbc-util.core
   (:import [com.zaxxer.hikari HikariDataSource]
            [java.util.regex Pattern]
-           [org.postgresql.util PGobject])
-  (:require [clojure.java.jdbc :as jdbc]
+           [org.postgresql.util PGobject PSQLException])
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :refer [tru trs trsn]]
@@ -198,3 +199,17 @@
                    "'{\"" schema "\"}',"
                    "true"
                    ");")))
+
+(defn handle-postgres-permission-errors
+  "A ring middleware to catch and report postgresql permission-denied errors."
+  [handler]
+  (fn [request]
+    (try
+      (handler request)
+      (catch PSQLException e
+        (if (= "42501" (.getSQLState e))
+          {:status 403
+           :headers {"Content-Type" "application/json"}
+           :body (json/generate-string {:kind "db-permission-error"
+                                        :msg (tru "The operation could not be performed because of insufficient database permissions.")})}
+          (throw e))))))
