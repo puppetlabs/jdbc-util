@@ -231,15 +231,3 @@
   (testing "look for db extension that does not exist"
     (is (not (has-extension? test-db "notanextension")))))
 
-(deftest wrap-ddl-for-pglogical-test
-  (is (= (str "do 'begin perform"
-              " pglogical.replicate_ddl_command(''set local search_path to public;"
-              " create table test(a integer);''"
-              "); end;';")
-         (wrap-ddl-for-pglogical "create table test(a integer);" "public"))))
-
-(deftest pg-permission-error-middleware-test
-  (let [throwing-handler (fn [_] (throw (PSQLException. "SomeMessage" (PSQLState. "42501"))))
-        wrapped (handle-postgres-permission-errors throwing-handler)
-        response-body (-> (wrapped nil) :body (json/parse-string true))]
-    (is (= "db-permission-error" (:kind response-body)))))
