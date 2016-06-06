@@ -11,7 +11,7 @@
       (handler request)
       (catch PSQLException e
         (if (= "42501" (.getSQLState e))
-          {:status 403
+          {:status 500
            :headers {"Content-Type" "application/json"}
            :body (json/generate-string {:kind "db-permission-error"
                                         :msg (tru "The operation could not be performed because of insufficient database permissions.")})}
