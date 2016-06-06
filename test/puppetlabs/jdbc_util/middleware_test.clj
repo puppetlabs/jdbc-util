@@ -7,5 +7,7 @@
 (deftest pg-permission-error-middleware-test
   (let [throwing-handler (fn [_] (throw (PSQLException. "SomeMessage" (PSQLState. "42501"))))
         wrapped (handle-postgres-permission-errors throwing-handler)
-        response-body (-> (wrapped nil) :body (json/parse-string true))]
+        response (wrapped nil)
+        response-body (-> response :body (json/parse-string true))]
+    (is (= 500 (:status response)))
     (is (= "db-permission-error" (:kind response-body)))))
