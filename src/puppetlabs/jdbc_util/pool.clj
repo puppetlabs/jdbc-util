@@ -50,6 +50,11 @@
   (status [this] "Get a map representing the status of a connection pool.")
   (init-error [this] "Return any exception raised by the init function (nil if none)."))
 
+(defn add-connectivity-check-timeout-ms
+  [hikari-config timeout]
+  (.addHealthCheckProperty hikari-config "connectivityCheckTimeoutMs" (str timeout))
+  hikari-config)
+
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs
   init-fn (with the connection as argument) before returning any connections to
@@ -58,7 +63,6 @@
   initialization-fail-fast set before being created or this is pointless."
   [^HikariDataSource datasource init-fn timeout]
   (when-not (.getHealthCheckRegistry datasource)
-    (.addHealthCheckProperty datasource "connectivityCheckTimeoutMs" (str timeout))
     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
   (let [init-error (atom nil)
         pool-future
