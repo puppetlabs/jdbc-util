@@ -28,6 +28,8 @@
             [org.clojure/clojure "1.8.0"]
             [puppetlabs/i18n "0.4.0"]]
 
+  :jar-exclusions [#"\.sw[a-z]$" #"~$" #"logback\.xml$" #"log4j\.properties$"]
+
   :lein-release {:scm :git
                  :deploy-via :lein-deploy}
 
