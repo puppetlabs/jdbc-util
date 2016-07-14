@@ -1,3 +1,15 @@
+## 0.4.4
+
+ * Add `select-user-configurable-hikari-options` to provide a consistent way of preserving only the hikari specific options from a given map of options.
+
+## 0.4.3
+
+ * Specifying the timeout in `wrap-with-delayed-init` does not allow the connectivity timeout to be configured independently. Added `add-connectivity-check-timeout-ms` to allow independent configuration.
+
+## 0.4.2
+
+ * Change the `handle-postgres-permission-errors` to generate a 500 code instead of a 403 when database permissions fail.
+
 ## 0.4.1
 
  * Add a `middleware` namespace with ring middleware for catching Postgres permission errors and returning an http response.
