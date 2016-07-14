@@ -46,6 +46,19 @@
                             (:subname db-spec)))
       (dissoc :subprotocol :subname)))
 
+(defn select-user-configurable-hikari-options
+  "Given a map, return the subset of entries in the map whose keys are hikari
+  options that we want our users to be able to configure. This is intended to
+  allow users to set these fields in the database configuration section of a
+  service's TrapperKeeper config."
+  [m]
+  (select-keys [:connection-timeout
+                :idle-timeout
+                :max-lifetime
+                :minimum-idle
+                :maximum-pool-size]
+               m))
+
 (defprotocol PoolStatus
   (status [this] "Get a map representing the status of a connection pool.")
   (init-error [this] "Return any exception raised by the init function (nil if none)."))
