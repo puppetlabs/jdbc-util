@@ -1,3 +1,6 @@
+## 0.4.5
+ * Change exception behavior of `update-pglogical-replication-set`. If the db user doesn't have rights to update pglogical, catches the exception and returns false. Other exceptions are passed through.
+
 ## 0.4.4
 
  * Add `select-user-configurable-hikari-options` to provide a consistent way of preserving only the hikari specific options from a given map of options.
