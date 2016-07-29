@@ -42,8 +42,8 @@
                  :connection-test-query "SELECT 1 FROM ANYWHERE;"
                  :minimum-idle 5
                  :maximum-pool-size 200
+                 :health-check-registry health-reg
                  ;; :metric-registry
-                 ;; :health-check-registry
                  :pool-name "bob"})]
     (testing "can set options on a HikariConfig"
       (are [value getter] (= value (getter config))
@@ -58,7 +58,8 @@
         "SELECT 1 FROM ANYWHERE;" .getConnectionTestQuery
         5 .getMinimumIdle
         200 .getMaximumPoolSize
-        "bob" .getPoolName))
+        "bob" .getPoolName
+        health-reg .getHealthCheckRegistry))
 
     (let [config (pool/options->hikari-config
                   {:username "nobody"
