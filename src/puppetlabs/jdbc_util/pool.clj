@@ -8,6 +8,11 @@
            [java.sql SQLTransientConnectionException SQLTransientException]
            javax.sql.DataSource))
 
+(defn add-connectivity-check-timeout-ms
+  [^HikariConfig config timeout]
+  (.addHealthCheckProperty config "connectivityCheckTimeoutMs" (str timeout))
+  config)
+
 (defn- set-option
   [^HikariConfig config option value]
   (case option
@@ -18,6 +23,7 @@
     :driver-class-name (.setDriverClassName config value)
     :auto-commit (.setAutoCommit config value)
     :connection-timeout (.setConnectionTimeout config value)
+    :connection-check-timeout (add-connectivity-check-timeout-ms config value)
     :idle-timeout (.setIdleTimeout config value)
     :max-lifetime (.setMaxLifetime config value)
     :connection-test-query (.setConnectionTestQuery config value)
@@ -53,6 +59,7 @@
   service's TrapperKeeper config."
   [m]
   (select-keys [:connection-timeout
+                :connection-check-timeout
                 :idle-timeout
                 :max-lifetime
                 :minimum-idle
@@ -62,11 +69,6 @@
 (defprotocol PoolStatus
   (status [this] "Get a map representing the status of a connection pool.")
   (init-error [this] "Return any exception raised by the init function (nil if none)."))
-
-(defn add-connectivity-check-timeout-ms
-  [hikari-config timeout]
-  (.addHealthCheckProperty hikari-config "connectivityCheckTimeoutMs" (str timeout))
-  hikari-config)
 
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs

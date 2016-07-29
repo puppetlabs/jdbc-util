@@ -30,7 +30,8 @@
       (is (= "frog" (.getPassword config))))))
 
 (deftest options->hikari-config
-  (let [config (pool/options->hikari-config
+  (let [health-reg (HealthCheckRegistry.)
+        config (pool/options->hikari-config
                 {:username "trogdor"
                  :password "burn1n4t3"
                  :driver-class-name "org.postgresql.Driver"
@@ -42,8 +43,9 @@
                  :connection-test-query "SELECT 1 FROM ANYWHERE;"
                  :minimum-idle 5
                  :maximum-pool-size 200
+                 :health-check-registry health-reg
+                 :connection-check-timeout 666
                  ;; :metric-registry
-                 ;; :health-check-registry
                  :pool-name "bob"})]
     (testing "can set options on a HikariConfig"
       (are [value getter] (= value (getter config))
@@ -58,15 +60,27 @@
         "SELECT 1 FROM ANYWHERE;" .getConnectionTestQuery
         5 .getMinimumIdle
         200 .getMaximumPoolSize
-        "bob" .getPoolName))
+        "bob" .getPoolName
+        health-reg .getHealthCheckRegistry
+        {"connectivityCheckTimeoutMs" "666"} .getHealthCheckProperties)))
 
-    (let [config (pool/options->hikari-config
-                  {:username "nobody"
-                   :password "noone"
-                   :data-source-class-name "org.postgresql.ds.PGSimpleDataSource"})]
-      (testing "can set data-source-class-name"
-        (is (= "org.postgresql.ds.PGSimpleDataSource"
-               (.getDataSourceClassName config)))))))
+  (testing "when no health registry is set, the health check timeout can still be set"
+    (let [config (pool/options->hikari-config {:driver-class-name "org.postgresql.Driver"
+                                               :jdbc-url "jdbc:postgresql:jdbc_util_test"
+                                               :connection-check-timeout 666})]
+      (is (= {"connectivityCheckTimeoutMs" "666"} (.getHealthCheckProperties config)))
+
+      (testing "and persists after a health registry is set"
+        (.setHealthCheckRegistry config (HealthCheckRegistry.))
+        (is (= {"connectivityCheckTimeoutMs" "666"} (.getHealthCheckProperties config))))))
+
+  (let [config (pool/options->hikari-config
+                 {:username "nobody"
+                  :password "noone"
+                  :data-source-class-name "org.postgresql.ds.PGSimpleDataSource"})]
+    (testing "can set data-source-class-name"
+      (is (= "org.postgresql.ds.PGSimpleDataSource"
+             (.getDataSourceClassName config))))))
 
 (deftest delayed-init
   (let [ready (atom false)
