@@ -145,3 +145,25 @@
     (is (= {:state :ready}
            (pool/status test-pool)))
     (.close test-pool)))
+
+(deftest init-datasource-test
+  (let [datasource (-> core-test/test-db
+                       pool/spec->hikari-options
+                       pool/options->hikari-config)
+        init-datasource {:user "migrator"}
+        init-fn (fn [prom]
+                  (fn [init-with]
+                    (deliver prom (:datasource init-with))))]
+    (testing "when init-datasource is omitted"
+      (let [!init-with (promise)
+            _ (pool/connection-pool-with-delayed-init datasource (init-fn !init-with) 5000)
+            init-with (deref !init-with 5000 nil)]
+        (testing "the init function is called with the datasource"
+          (is (instance? com.zaxxer.hikari.HikariConfig init-with)))))
+
+    (testing "when init-datasource is provided"
+      (let [!init-with (promise)
+            _ (pool/connection-pool-with-delayed-init datasource (init-fn !init-with) init-datasource 5000)
+            init-with (deref !init-with 5000 nil)]
+        (testing "the init function is called with the init-datasource"
+          (is (= init-datasource init-with)))))))
