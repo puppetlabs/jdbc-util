@@ -11,6 +11,7 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.6.1"]
                  [org.postgresql/postgresql "9.4.1208.jre7"]
+                 [migratus "0.8.28"]
                  [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/i18n "0.4.0"]

@@ -4,6 +4,7 @@
             [puppetlabs.i18n.core :refer [with-user-locale string-as-locale]]
             [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.core-test :as core-test]
+            [puppetlabs.jdbc-util.migration :as migration]
             [puppetlabs.jdbc-util.pool :as pool])
   (:import com.codahale.metrics.health.HealthCheckRegistry
            [com.zaxxer.hikari HikariConfig HikariDataSource]
@@ -102,7 +103,7 @@
                     ([user pass]
                      (.getConnection this))))]
     (testing "the pool retries until it gets a connection"
-      (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
+      (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) {:migration-dir {}} 1)]
         (is (thrown? SQLTransientConnectionException
                      (.getConnection wrapped)))
         (Thread/sleep 2000)
@@ -120,7 +121,7 @@
                    pool/options->hikari-config)]
     (testing "if the init-fn throws an exception it continues to hand out connections normally"
       (let [wrapped (pool/connection-pool-with-delayed-init
-                     config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+                     config {:migration-db {}} (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
         (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
         (is (= {:state :error
                 :messages ["Initialization resulted in an error: test exception"]}
@@ -130,7 +131,7 @@
       (let [eo (string-as-locale "eo")]
         (with-user-locale eo
          (let [wrapped (pool/connection-pool-with-delayed-init
-                             config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+                        config {:migration-db {}} (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
                 (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
                 (is (= {:state :error
                         :messages ["This_is_a_translated_string: test exception"]}
@@ -140,30 +141,29 @@
   (let [test-pool (-> core-test/test-db
                       pool/spec->hikari-options
                       pool/options->hikari-config
-                      (pool/connection-pool-with-delayed-init identity 5000))]
+                      (pool/connection-pool-with-delayed-init {:migration-db core-test/test-db} identity 5000))]
     (.getConnection test-pool)
     (is (= {:state :ready}
            (pool/status test-pool)))
     (.close test-pool)))
 
-(deftest init-datasource-test
+(deftest migration-db-spec-test
   (let [datasource (-> core-test/test-db
+                       (assoc :pool-name "AppPool")
                        pool/spec->hikari-options
                        pool/options->hikari-config)
-        init-datasource {:user "migrator"}
-        init-fn (fn [prom]
-                  (fn [init-with]
-                    (deliver prom (:datasource init-with))))]
-    (testing "when init-datasource is omitted"
+        migration-db-spec (assoc core-test/test-db :user "migrator")]
+    (testing "the init function is called with the application datasource"
       (let [!init-with (promise)
-            _ (pool/connection-pool-with-delayed-init datasource (init-fn !init-with) 5000)
-            init-with (deref !init-with 5000 nil)]
-        (testing "the init function is called with the datasource"
-          (is (instance? com.zaxxer.hikari.HikariConfig init-with)))))
-
-    (testing "when init-datasource is provided"
-      (let [!init-with (promise)
-            _ (pool/connection-pool-with-delayed-init datasource (init-fn !init-with) init-datasource 5000)
-            init-with (deref !init-with 5000 nil)]
-        (testing "the init function is called with the init-datasource"
-          (is (= init-datasource init-with)))))))
+            init-fn (fn [init-with]
+                      (deliver !init-with init-with))]
+        (pool/connection-pool-with-delayed-init datasource {:migration-db migration-db-spec} init-fn 5000)
+        (let [init-with (deref !init-with 5000 nil)]
+          (is (= "AppPool" (.getPoolName (:datasource init-with)))))))
+    (testing "the migrate function is called with the migration-db-spec"
+      (let [!migrate-with (promise)]
+        (with-redefs [migration/migrate (fn [migrate-db migration-dir]
+                                          (deliver !migrate-with migrate-db))]
+          (pool/connection-pool-with-delayed-init datasource {:migration-db migration-db-spec} identity 5000)
+          (let [migrate-with (deref !migrate-with 5000 nil)]
+            (is (= migration-db-spec migrate-with))))))))
