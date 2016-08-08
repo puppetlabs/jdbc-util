@@ -38,22 +38,26 @@ msgid ""
 "permissions."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:29
+#: src/puppetlabs/jdbc_util/pool.clj:36
 msgid "{0} is not a supported HikariCP option"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:80
+#: src/puppetlabs/jdbc_util/pool.clj:96
+msgid "{0} - An error was encountered during database migration."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj:102
 msgid "{0} - An error was encountered during initialization."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:83
+#: src/puppetlabs/jdbc_util/pool.clj:106
 msgid "{0} - Error while attempting to connect to database, retrying."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:91 src/puppetlabs/jdbc_util/pool.clj:94
+#: src/puppetlabs/jdbc_util/pool.clj:115 src/puppetlabs/jdbc_util/pool.clj:118
 msgid "Timeout waiting for the database pool to become ready."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:114
+#: src/puppetlabs/jdbc_util/pool.clj:138
 msgid "Initialization resulted in an error: {0}"
 msgstr ""
