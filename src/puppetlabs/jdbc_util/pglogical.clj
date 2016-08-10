@@ -155,9 +155,9 @@
   "Create a function which wraps the pglogical show_subscription_status
   function, allowing it to be called by any user, not just admin. This function
   is used by pglogical replication status, and is required for it to function."
-  [db]
+  [db schema]
   (jdbc/execute! db [(if (has-pglogical-extension? db)
-                       (wrap-ddl-for-pglogical create-status-alias-sql "public")
+                       (wrap-ddl-for-pglogical create-status-alias-sql schema)
                        create-status-alias-sql)]))
 
 (defn combined-replication-status
