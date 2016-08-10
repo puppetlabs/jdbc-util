@@ -45,24 +45,25 @@
         false
         (throw e)))))
 
-;;;; Status
 
-(def create-status-alias
-  "CREATE OR REPLACE FUNCTION show_subscription_status(OUT subscription_name text, OUT status text,
-     OUT provider_node text, OUT provider_dsn text, OUT slot_name text, OUT replication_sets text[],
-     OUT forward_origins text[])
+;;; Status internals
+
+(def ^:private create-status-alias-sql
+  "CREATE OR REPLACE FUNCTION
+     show_subscription_status(
+       OUT subscription_name text,
+       OUT status text,
+       OUT provider_node text,
+       OUT provider_dsn text,
+       OUT slot_name text,
+       OUT replication_sets text[],
+       OUT forward_origins text[])
      RETURNS SETOF record AS $$
        SELECT * FROM pglogical.show_subscription_status();
      $$ LANGUAGE SQL
      SECURITY DEFINER;")
 
-(defn add-status-alias
-  "Adds an alias for the pglogical show_subscription_status function, allowing
-  it to be called by any user, not just admin."
-  [db]
-  (jdbc/execute! db [create-status-alias]))
-
-(defn consolidate-replication-status
+(defn consolidate-replica-status
   "Given a list of states of pglogical subscriptions, returns
   the status of data replication. Returns :running if all subscriptions for
   that database are up and running, :disabled if any subscription has been
@@ -81,7 +82,7 @@
       (disabled? statuses) :disabled
       :else :unknown)))
 
-(defn replica-replication-status
+(defn- replica-replication-status
   "Given a DB connection for a pglogical replica node, returns
   the status of data replication. Returns :running if all subscriptions for
   that database are up and running, :disabled if any subscription has been
@@ -91,50 +92,91 @@
   postgresql TCP settings."
   [db]
   (if (has-pglogical-extension? db)
-    (-> (jdbc/query db ["SELECT status from show_subscription_status()"] {:row-fn :status})
-        (consolidate-replication-status))
+    (->> (jdbc/query db ["SELECT status from show_subscription_status()"] {:row-fn :status})
+         consolidate-replica-status)
     :none))
 
-(defn consolidate-provider-status
+(defn- consolidate-provider-status
+  "Given a seq of boolean replication slot statuses (true == active, false ==
+  inactive), return the overall provder status; one of :active, :inactive,
+  or :none."
   [statuses]
   (let [all-active? #(every? true? %)]
     (case
-      (empty? statuses) :none
-      (all-active? statuses) :active
-      :else :inactive)))
+        (empty? statuses) :none
+        (all-active? statuses) :active
+        :else :inactive)))
 
-(defn provider-replication-status
+(defn- provider-replication-status
   "Given a DB connection for a pglogical provider node, query whether the
   node's subscription is currently active or not. Returns :active or
   :inactive, or :none if pglogical is not installed."
   [db]
   (if (has-pglogical-extension? db)
-    (jdbc/query db ["SELECT active FROM pg_replication_slots WHERE database = ?" (:db db)])
+    (->> (jdbc/query db ["SELECT active FROM pg_replication_slots WHERE database = current_database()"] {:row-fn :active})
+         consolidate-provider-status)
     :none))
 
-(defn replication-status
-  "Given a DB connection for a pglogical node and the role of that node,
-  :source or :replica, query replication status. Returns a map reporting the
-  role and its status. Valid status values vary depending on the role; see
-  other replication-status functions for more information."
-  [db role]
-  (let [status (if (= :source role)
-                 (provider-replication status db)
-                 (replica-replication-status db))]
-    {:role role
-     :status status}))
+(defn- replication-status
+  "Given a DB connection for a pglogical node and the replication mode of :none,
+  :source or :replica, query replication status. Returns a status keyword,
+  or :none if replication-mode is :none. Valid status values vary depending on
+  thew role; see other replication-status functions for more information."
+  [db replication-mode]
+  (case replication-mode
+    :source (provider-replication-status db)
+    :replica (replica-replication-status db)
+    :none :none
+    nil :none))
 
-(defn replication-alert
-  "Produces an alert that can be used if replication is down. This is only a
-  function for localization reasons.
+(defn- format-replication-alert
+  "Produce an alert that can be used if replication is down.
 
-  This function takes a service name and a replication state, which can be one
-  of: :disabled, :down, or :unknown. It then returns a human-readable message."
-  [service-name replication-state]
-  (let [construct-error (fn [message] {:severity "error"
-                                       :message message})]
+  This function takes a service name and a replication status, which can be any
+  value returned by one of the replication-status functions above. It then
+  returns an alert map as required by tk-status, including a localized
+  human-readable message.
 
-  (case replication-state
-    :down (construct-error (tru "Database replication for {0} is currently down." service-name))
-    :disabled (construct-error (tru "Database replication for {0} has been disabled." service-name))
-    :unknown (construct-error (tru "Database replication for {0} is in an unknown state.")))))
+  Returns nil if there's nothing wrong."
+  [service-name replication-status]
+  (when-let [status-message (case replication-status
+                              :down (tru "Database replication for {0} is currently down." service-name)
+                              :disabled (tru "Database replication for {0} has been disabled." service-name)
+                              :unknown (tru "Database replication for {0} is in an unknown state." service-name)
+                              :inactive (tru "Database replication for {0} is inactive" service-name)
+                              nil)]
+    {:severity :error
+     :message status-message}))
+
+
+;;; Status public API
+
+(defn add-status-alias
+  "Create a function which wraps the pglogical show_subscription_status
+  function, allowing it to be called by any user, not just admin. This function
+  is used by pglogical replication status, and is required for it to function."
+  [db]
+  (jdbc/execute! db [(if (has-pglogical-extension? db)
+                       (wrap-ddl-for-pglogical create-status-alias-sql "public")
+                       create-status-alias-sql)]))
+
+(defn combined-replication-status
+  "Return a map with of pglogical status information suitable for inclusion in a
+  tk-status response. It looks like this:
+
+  {:alerts [{:severity :error, :message \"human readable message\"]
+   :structured-status {:mode (:source, :replica, or :none)
+                       :status (:running, :down, :disabled, :unknown, :inactive, or :none)}
+
+  The seq at the alerts key may be nil if there's nothing wrong. It should be
+  combined with any application-specific alerts and returned in the :alerts
+  section of the tk-status response.
+
+  The value at the :structured-status key should be included in the tk-status
+  response at the path [:status :replication]."
+  [db replication-mode service-name]
+  (let [status (replication-status db replication-mode)]
+    {:alerts (some-> (format-replication-alert service-name status)
+                     vector)
+     :structured-status {:mode replication-mode
+                         :status status}}))
