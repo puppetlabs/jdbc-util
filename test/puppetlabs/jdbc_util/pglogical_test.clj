@@ -9,17 +9,17 @@
               "); end;';")
          (wrap-ddl-for-pglogical "create table test(a integer);" "public"))))
 
-(deftest consolidate-replication-status-test
+(deftest consolidate-replica-status-test
   (testing "when 2 subscriptions are running, returns :running"
-    (is (= :running (consolidate-replication-status ["replicating" "replicating"]))))
+    (is (= :running (consolidate-replica-status ["replicating" "replicating"]))))
   (testing "when one subscription is down,"
     (testing "and the rest are running, returns :down"
-      (is (= :down (consolidate-replication-status ["replicating" "down"]))))
+      (is (= :down (consolidate-replica-status ["replicating" "down"]))))
     (testing "and another is disabled, returns :down"
-      (is (= :down (consolidate-replication-status ["disabled" "down"])))))
+      (is (= :down (consolidate-replica-status ["disabled" "down"])))))
   (testing "when one subscription is disabled,"
     (testing "and the rest are running, returns :disabled"
-      (is (= :disabled (consolidate-replication-status ["replicating" "disabled"])))))
+      (is (= :disabled (consolidate-replica-status ["replicating" "disabled"])))))
   (testing "when no subscriptions are configured, returns :disabled"
     (testing "and the rest are running, returns :none"
-      (is (= :none (consolidate-replication-status []))))))
+      (is (= :none (consolidate-replica-status []))))))
