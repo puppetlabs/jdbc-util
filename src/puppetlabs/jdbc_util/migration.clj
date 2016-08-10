@@ -28,6 +28,7 @@
                                           #(pglogical/wrap-ddl-for-pglogical % pg-schema)
                                           identity)})
       (when have-pglogical
+        (pglogical/add-status-alias db pg-schema)
         (pglogical/update-pglogical-replication-set db pg-schema))
       (catch BatchUpdateException e
         (let [root-e (last (seq e))]
