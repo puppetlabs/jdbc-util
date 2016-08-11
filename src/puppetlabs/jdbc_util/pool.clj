@@ -74,14 +74,16 @@
 
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs
-  init-fn (with the connection as argument) before returning any connections to
-  the application. Accepts a timeout in ms that's used when dereferencing the
-  future and by the status check. The datasource should have
-  initialization-fail-fast set before being created or this is pointless.
+  database migrations, then calls init-fn (with the connection as argument)
+  before returning any connections to the application. Accepts a timeout in ms
+  that's used when dereferencing the future and by the status check. The
+  datasource should have initialization-fail-fast set before being created or
+  this is pointless.
 
   migration-opts is a map of:
     :migration-dir, the path to the migratus migration directory on the classpath
     :migration-db, the connection map for the db used for migrations
+    :replication-mode, one of :source, :replica, or :none (the default)
 
   If migration-opts is nil or not passed, the migration step is skipped."
   ([^HikariDataSource datasource init-fn timeout]
@@ -97,13 +99,14 @@
                       (try
                         ;; Try to get a connection to make sure the db is ready
                         (.close (.getConnection datasource))
-                        (when-let [{:keys [migration-db migration-dir]} migration-opts]
-                          (try
-                            (migration/migrate migration-db migration-dir)
-                            (catch Exception e
-                              (reset! init-error e)
-                              (log/errorf e (trs "{0} - An error was encountered during database migration."
-                                                 (:subname migration-db "unknown"))))))
+                        (when-let [{:keys [migration-db migration-dir replication-mode]} migration-opts]
+                          (when-not (= replication-mode :replica)
+                            (try
+                              (migration/migrate migration-db migration-dir)
+                              (catch Exception e
+                                (reset! init-error e)
+                                (log/errorf e (trs "{0} - An error was encountered during database migration."
+                                                   (:subname migration-db "unknown")))))))
                         (try
                           (init-fn {:datasource datasource})
                           (catch Exception e
