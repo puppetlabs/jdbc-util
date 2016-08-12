@@ -77,74 +77,83 @@
   init-fn (with the connection as argument) before returning any connections to
   the application. Accepts a timeout in ms that's used when dereferencing the
   future and by the status check. The datasource should have
-  initialization-fail-fast set before being created or this is pointless."
-  [^HikariDataSource datasource {:keys [migration-db migration-dir]} init-fn timeout]
-  (when-not (.getHealthCheckRegistry datasource)
-    (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
-  (let [init-error (atom nil)
-        pool-future
-        (future
-          (loop []
-            (if-let [result
-                     (try
-                       ;; Try to get a connection to make sure the db is ready
-                       (.close (.getConnection datasource))
-                       (try
-                         (migration/migrate migration-db migration-dir)
-                         (catch Exception e
-                           (reset! init-error e)
-                           (log/errorf e (trs "{0} - An error was encountered during database migration."
-                                              (:subname migration-db "unknown")))))
-                       (try
-                         (init-fn {:datasource datasource})
-                         (catch Exception e
-                           (reset! init-error e)
-                           (log/errorf e (trs "{0} - An error was encountered during initialization."
-                                              (.getPoolName datasource)))))
-                       datasource
-                       (catch SQLTransientException e
-                         (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying."
-                                           (.getPoolName datasource)))
-                         nil))]
-              result
-              (recur))))]
-    (reify
-      DataSource
-      (getConnection [this]
-        (.getConnection (or (deref pool-future timeout nil)
-                            (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))))
-      (getConnection [this username password]
-        (.getConnection (or (deref pool-future timeout nil)
-                            (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))
-                        username
-                        password))
+  initialization-fail-fast set before being created or this is pointless.
 
-      Closeable
-      (close [this]
-        (.close datasource))
+  migration-opts is a map of:
+    :migration-dir, the path to the migratus migration directory on the classpath
+    :migration-db, the connection map for the db used for migrations
 
-      PoolStatus
-      (status [this]
-        (if (realized? pool-future)
-          (let [connectivity-check (str (.getPoolName datasource)
-                                        ".pool.ConnectivityCheck")
-                health-result (.runHealthCheck
-                               (.getHealthCheckRegistry datasource)
-                               connectivity-check)
-                healthy? (and (.isHealthy health-result)
-                              (nil? @init-error))
-                messages (remove nil? [(some->> @init-error
-                                                (.getMessage)
-                                                (tru "Initialization resulted in an error: {0}"))
-                                       (.getMessage health-result)])]
-            (cond-> {:state (if healthy?
-                              :ready
-                              :error)}
-              (not healthy?) (merge {:messages messages})))
-          {:state :starting}))
+  If migration-opts is nil or not passed, the migration step is skipped."
+  ([^HikariDataSource datasource init-fn timeout]
+   (wrap-with-delayed-init datasource nil init-fn timeout))
+  ([^HikariDataSource datasource migration-opts init-fn timeout]
+   (when-not (.getHealthCheckRegistry datasource)
+     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
+   (let [init-error (atom nil)
+         pool-future
+         (future
+           (loop []
+             (if-let [result
+                      (try
+                        ;; Try to get a connection to make sure the db is ready
+                        (.close (.getConnection datasource))
+                        (when-let [{:keys [migration-db migration-dir]} migration-opts]
+                          (try
+                            (migration/migrate migration-db migration-dir)
+                            (catch Exception e
+                              (reset! init-error e)
+                              (log/errorf e (trs "{0} - An error was encountered during database migration."
+                                                 (:subname migration-db "unknown"))))))
+                        (try
+                          (init-fn {:datasource datasource})
+                          (catch Exception e
+                            (reset! init-error e)
+                            (log/errorf e (trs "{0} - An error was encountered during initialization."
+                                               (.getPoolName datasource)))))
+                        datasource
+                        (catch SQLTransientException e
+                          (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying."
+                                            (.getPoolName datasource)))
+                          nil))]
+               result
+               (recur))))]
+     (reify
+       DataSource
+       (getConnection [this]
+         (.getConnection (or (deref pool-future timeout nil)
+                             (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))))
+       (getConnection [this username password]
+         (.getConnection (or (deref pool-future timeout nil)
+                             (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))
+                         username
+                         password))
 
-      (init-error [this]
-        @init-error))))
+       Closeable
+       (close [this]
+         (.close datasource))
+
+       PoolStatus
+       (status [this]
+         (if (realized? pool-future)
+           (let [connectivity-check (str (.getPoolName datasource)
+                                         ".pool.ConnectivityCheck")
+                 health-result (.runHealthCheck
+                                (.getHealthCheckRegistry datasource)
+                                connectivity-check)
+                 healthy? (and (.isHealthy health-result)
+                               (nil? @init-error))
+                 messages (remove nil? [(some->> @init-error
+                                                 (.getMessage)
+                                                 (tru "Initialization resulted in an error: {0}"))
+                                        (.getMessage health-result)])]
+             (cond-> {:state (if healthy?
+                               :ready
+                               :error)}
+               (not healthy?) (merge {:messages messages})))
+           {:state :starting}))
+
+       (init-error [this]
+         @init-error)))))
 
 (defn connection-pool-with-delayed-init
   "Create a connection pool that loops trying to get a connection, and then runs
@@ -152,7 +161,9 @@
   the application. Accepts a timeout in ms that's used when deferencing the
   future. This overrides the value of initialization-fail-fast and always sets
   it to false. "
-  [^HikariConfig config migration-options init-fn timeout]
-  (let [datasource (HikariDataSource. config)]
-    (.setInitializationFailFast config false)
-    (wrap-with-delayed-init datasource migration-options init-fn timeout)))
+  ([^HikariConfig config init-fn timeout]
+   (connection-pool-with-delayed-init config nil init-fn timeout))
+  ([^HikariConfig config migration-options init-fn timeout]
+   (let [datasource (HikariDataSource. config)]
+     (.setInitializationFailFast config false)
+     (wrap-with-delayed-init datasource migration-options init-fn timeout))))
