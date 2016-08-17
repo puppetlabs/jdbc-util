@@ -1,7 +1,8 @@
 (ns puppetlabs.jdbc-util.pool
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [puppetlabs.i18n.core :refer [tru trs trun]])
+            [puppetlabs.i18n.core :refer [tru trs trun]]
+            [puppetlabs.jdbc-util.migration :as migration])
   (:import com.codahale.metrics.health.HealthCheckRegistry
            [com.zaxxer.hikari HikariConfig HikariDataSource]
            java.io.Closeable
@@ -50,7 +51,8 @@
       (assoc :jdbc-url (str "jdbc:"
                             (:subprotocol db-spec) ":"
                             (:subname db-spec)))
-      (dissoc :subprotocol :subname)))
+      (dissoc :subprotocol :subname
+              :migration-password :migration-user)))
 
 (defn select-user-configurable-hikari-options
   "Given a map, return the subset of entries in the map whose keys are hikari
@@ -73,10 +75,10 @@
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs
   init-fn (with the connection as argument) before returning any connections to
-  the application. Accepts a timeout in ms that's used when deferencing the
+  the application. Accepts a timeout in ms that's used when dereferencing the
   future and by the status check. The datasource should have
   initialization-fail-fast set before being created or this is pointless."
-  [^HikariDataSource datasource init-fn timeout]
+  [^HikariDataSource datasource {:keys [migration-db migration-dir]} init-fn timeout]
   (when-not (.getHealthCheckRegistry datasource)
     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
   (let [init-error (atom nil)
@@ -87,13 +89,22 @@
                      (try
                        ;; Try to get a connection to make sure the db is ready
                        (.close (.getConnection datasource))
-                       (try (init-fn {:datasource datasource})
-                            (catch Exception e
-                              (swap! init-error (constantly e))
-                              (log/errorf e (trs "{0} - An error was encountered during initialization." (.getPoolName datasource)))))
+                       (try
+                         (migration/migrate migration-db migration-dir)
+                         (catch Exception e
+                           (reset! init-error e)
+                           (log/errorf e (trs "{0} - An error was encountered during database migration."
+                                              (:subname migration-db "unknown")))))
+                       (try
+                         (init-fn {:datasource datasource})
+                         (catch Exception e
+                           (reset! init-error e)
+                           (log/errorf e (trs "{0} - An error was encountered during initialization."
+                                              (.getPoolName datasource)))))
                        datasource
                        (catch SQLTransientException e
-                         (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying." (.getPoolName datasource)))
+                         (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying."
+                                           (.getPoolName datasource)))
                          nil))]
               result
               (recur))))]
@@ -141,6 +152,7 @@
   the application. Accepts a timeout in ms that's used when deferencing the
   future. This overrides the value of initialization-fail-fast and always sets
   it to false. "
-  [^HikariConfig config init-fn timeout]
-  (.setInitializationFailFast config false)
-  (wrap-with-delayed-init (HikariDataSource. config) init-fn timeout))
+  [^HikariConfig config migration-options init-fn timeout]
+  (let [datasource (HikariDataSource. config)]
+    (.setInitializationFailFast config false)
+    (wrap-with-delayed-init datasource migration-options init-fn timeout)))
