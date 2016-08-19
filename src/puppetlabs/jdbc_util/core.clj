@@ -49,15 +49,28 @@
 (defn public-tables
   "Get the names of all public tables in a database"
   [db-spec]
-  (let [query "SELECT table_name FROM information_schema.tables WHERE LOWER(table_schema) = 'public'"
-        results (jdbc/query db-spec [query])]
-    (map :table_name results)))
+  (let [query "SELECT table_name FROM information_schema.tables WHERE LOWER(table_schema) = 'public'"]
+    (jdbc/query db-spec [query] {:row-fn :table_name})))
 
 (defn drop-public-tables!
   "Drops all public tables in a database. Super dangerous."
   [db-spec]
-  (if-let [tables (seq (public-tables db-spec))]
+  (when-let [tables (seq (public-tables db-spec))]
     (jdbc/db-do-commands db-spec (map #(format "DROP TABLE %s CASCADE" %) tables))))
+
+(defn public-functions
+  "Get the names of all public functions in a database"
+  [db-spec]
+  (let [query (str "SELECT ns.nspname || '.' || proname || '(' || oidvectortypes(proargtypes) || ')' AS function"
+                   "  FROM pg_proc INNER JOIN pg_namespace ns ON (pg_proc.pronamespace = ns.oid)"
+                   "  WHERE ns.nspname = 'public'")]
+    (jdbc/query db-spec [query] {:row-fn :function})))
+
+(defn drop-public-functions!
+  "Drops all public functions in a database. Super dangerous."
+  [db-spec]
+  (when-let [functions (seq (public-functions db-spec))]
+    (jdbc/db-do-commands db-spec (map #(format "DROP FUNCTION %s CASCADE" %) functions))))
 
 (defn convert-result-arrays
   "Converts Java and JDBC arrays in a result set using the provided
