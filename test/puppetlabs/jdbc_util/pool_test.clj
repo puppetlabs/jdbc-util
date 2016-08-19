@@ -103,7 +103,7 @@
                     ([user pass]
                      (.getConnection this))))]
     (testing "the pool retries until it gets a connection"
-      (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) {:migration-dir {}} 1)]
+      (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
         (is (thrown? SQLTransientConnectionException
                      (.getConnection wrapped)))
         (Thread/sleep 2000)
@@ -121,7 +121,7 @@
                    pool/options->hikari-config)]
     (testing "if the init-fn throws an exception it continues to hand out connections normally"
       (let [wrapped (pool/connection-pool-with-delayed-init
-                     config {:migration-db {}} (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+                     config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
         (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
         (is (= {:state :error
                 :messages ["Initialization resulted in an error: test exception"]}
@@ -131,7 +131,7 @@
       (let [eo (string-as-locale "eo")]
         (with-user-locale eo
          (let [wrapped (pool/connection-pool-with-delayed-init
-                        config {:migration-db {}} (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+                        config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
                 (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
                 (is (= {:state :error
                         :messages ["This_is_a_translated_string: test exception"]}
@@ -141,7 +141,7 @@
   (let [test-pool (-> core-test/test-db
                       pool/spec->hikari-options
                       pool/options->hikari-config
-                      (pool/connection-pool-with-delayed-init {:migration-db core-test/test-db} identity 5000))]
+                      (pool/connection-pool-with-delayed-init identity 5000))]
     (.getConnection test-pool)
     (is (= {:state :ready}
            (pool/status test-pool)))
