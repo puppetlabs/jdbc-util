@@ -1,8 +1,16 @@
+## 0.4.7
+
+ * Add support for running migrations when creating a connection pool (separate from the init-fn).
+ * Add functionality for retrieving the status of pglogical replication.
+ * Add `drop-public-functions!` utility function.
+
 ## 0.4.6
+
  * Allow the connection health check timeout to be set via `options->hikari-config` using the :connection-check-timeout entry.
  * Select the :connection-check-timeout entry in `select-user-configurable-hikari-options`.
 
 ## 0.4.5
+
  * Change exception behavior of `update-pglogical-replication-set`. If the db user doesn't have rights to update pglogical, catches the exception and returns false. Other exceptions are passed through.
 
 ## 0.4.4
