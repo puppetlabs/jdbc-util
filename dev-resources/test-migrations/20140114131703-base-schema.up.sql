@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS foo (
+  bar TEXT PRIMARY KEY
+);
+--;;

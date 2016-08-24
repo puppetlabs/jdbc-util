@@ -72,6 +72,18 @@
   (status [this] "Get a map representing the status of a connection pool.")
   (init-error [this] "Return any exception raised by the init function (nil if none)."))
 
+(def replica-migrations-polling-interval-ms 1500)
+
+(defn wait-for-migrations
+  "Loops until there are no uncompleted migrations from the migration-dir in the
+  db. We use this on pglogical replicas which will have their database
+  migrations replicated."
+  [db migration-dir]
+  (loop []
+    (when (not-empty (migration/uncompleted-migrations db migration-dir))
+      (Thread/sleep replica-migrations-polling-interval-ms)
+      (recur))))
+
 (defn wrap-with-delayed-init
   "Wraps a connection pool that loops trying to get a connection, and then runs
   database migrations, then calls init-fn (with the connection as argument)
@@ -100,7 +112,11 @@
                         ;; Try to get a connection to make sure the db is ready
                         (.close (.getConnection datasource))
                         (when-let [{:keys [migration-db migration-dir replication-mode]} migration-opts]
-                          (when-not (= replication-mode :replica)
+                          ;; If we're a replica then pglogical will be
+                          ;; replicating our migrations for us, so we poll until
+                          ;; the migrations have been replicated
+                          (if (= replication-mode :replica)
+                            (wait-for-migrations migration-db migration-dir)
                             (try
                               (migration/migrate migration-db migration-dir)
                               (catch Exception e

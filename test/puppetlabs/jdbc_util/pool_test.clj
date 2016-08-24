@@ -167,3 +167,31 @@
           (pool/connection-pool-with-delayed-init datasource {:migration-db migration-db-spec} identity 5000)
           (let [migrate-with (deref !migrate-with 5000 nil)]
             (is (= migration-db-spec migrate-with))))))))
+
+(deftest migration-blocks-initilization
+  (let [config (-> core-test/test-db
+                   (assoc :pool-name "AppPool")
+                   pool/spec->hikari-options
+                   pool/options->hikari-config)
+        num-migrations-left (fn []
+                              (count (migration/uncompleted-migrations core-test/test-db
+                                                                       "test-migrations")))
+        init-status (atom :waiting)
+        wait-for-migrations-ms 3500]
+    (core/drop-public-tables! core-test/test-db)
+    (testing "waiting on migrations blocks startup on replicas"
+      (is (= 1 (num-migrations-left)))
+      (pool/connection-pool-with-delayed-init config
+                                              {:migration-db core-test/test-db
+                                               :migration-dir "test-migrations"
+                                               :replication-mode :replica}
+                                              (fn [_] (reset! init-status :completed))
+                                              5000)
+      (is (= 1 (num-migrations-left)))
+      (is (= @init-status :waiting))
+
+      (migration/migrate core-test/test-db "test-migrations")
+      (Thread/sleep wait-for-migrations-ms)
+
+      (is (= 0 (num-migrations-left)))
+      (is (= @init-status :completed)))))
