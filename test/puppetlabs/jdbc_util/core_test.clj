@@ -231,3 +231,30 @@
   (testing "look for db extension that does not exist"
     (is (not (has-extension? test-db "notanextension")))))
 
+(deftest reconcile-sequence-for-column-test
+  (let [max-id #(-> (jdbc/query test-db ["SELECT id FROM sequence_test ORDER BY id DESC LIMIT 1"])
+                    first
+                    :id)
+        insert-dummy #(jdbc/execute! test-db ["INSERT INTO sequence_test DEFAULT VALUES"])
+        set-sequence-value #(jdbc/query test-db ["SELECT setval('sequence_test_id_seq', ?)" %])
+        current-sequence-value #(-> (jdbc/query test-db ["SELECT currval('sequence_test_id_seq')"])
+                                    first
+                                    :currval)]
+    (testing "given a table with a sequence object"
+      (jdbc/execute! test-db ["DROP TABLE IF EXISTS sequence_test CASCADE"])
+      (jdbc/execute! test-db ["CREATE TABLE sequence_test (id BIGSERIAL PRIMARY KEY)"])
+      (testing "where the sequence object is out of date"
+        (dotimes [_ 5] (insert-dummy))
+        (insert-dummy)
+        (set-sequence-value 1)
+        (testing "inserting fails"
+          (is (thrown-with-msg? PSQLException #"duplicate key value"
+                                (insert-dummy)))
+          (testing "but not if we call reconcile-sequence-for-column!"
+            (set-sequence-value 1)
+            (reconcile-sequence-for-column! test-db "sequence_test" "id")
+            (insert-dummy)))))
+
+    (testing "when there is no associated sequence, reconcile-sequence-for-column! throws an exception"
+      (is (thrown-with-msg? Exception #"No sequence found"
+                            (reconcile-sequence-for-column! test-db "authors" "name"))))))

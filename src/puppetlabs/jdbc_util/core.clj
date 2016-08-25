@@ -178,3 +178,24 @@
       first
       :count
       pos?))
+
+(defn get-sequence-name-for-column
+  "Returns the name of the sequence associated with a column, or nil if there is
+  no sequence."
+  [db table column]
+  (-> (jdbc/query db ["SELECT pg_get_serial_sequence(?, ?)" table column])
+      first
+      :pg_get_serial_sequence))
+
+(defn reconcile-sequence-for-column!
+  "Finds the sequence associated with the given column and sets it to the
+  current maximum value in that column, so that the next value in the sequence
+  will be the current maximum + 1 (or 0, if the table is empty). If the column
+  has no associated sequence, throws an Exception."
+  [db table column]
+  (if-let [sequence-name (get-sequence-name-for-column db table column)]
+    (jdbc/with-db-transaction [txn-db db]
+      (jdbc/execute! txn-db [(format "LOCK TABLE \"%s\" IN EXCLUSIVE MODE NOWAIT" table)])
+      (jdbc/query txn-db [(format "SELECT setval('%s', COALESCE(max(\"%s\"), 0)) FROM \"%s\""
+                                  sequence-name column table)]))
+    (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))
