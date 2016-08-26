@@ -56,3 +56,12 @@
       (catch BatchUpdateException e
         (let [root-e (last (seq e))]
           (throw root-e))))))
+
+(defn uncompleted-migrations
+  "Returns a list of migrations in migration-dir that haven't run in db"
+  [db migration-dir]
+  (let [config {:store :database
+                :migration-dir migration-dir
+                :db db}]
+    (migratus/uncompleted-migrations (doto (mproto/make-store config)
+                                       (mproto/connect)))))
