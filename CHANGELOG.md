@@ -1,3 +1,12 @@
+## 0.4.8
+
+ * Block startup of `:replication-mode` replicas waiting on migrations. If the
+   application is configured as a replica wait on migrations before initializing
+   the database (useful for waiting on pglogical replication which will
+   replicate the migrations).
+ * Added `Add reconcile-sequence-for-column!` that will reset a sequence to the
+   maximum value in the column, or else 0.
+
 ## 0.4.7
 
  * Add support for running migrations when creating a connection pool (separate from the init-fn).
