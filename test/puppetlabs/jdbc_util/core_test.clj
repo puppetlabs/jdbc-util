@@ -243,9 +243,14 @@
     (testing "given a table with a sequence object"
       (jdbc/execute! test-db ["DROP TABLE IF EXISTS sequence_test CASCADE"])
       (jdbc/execute! test-db ["CREATE TABLE sequence_test (id BIGSERIAL PRIMARY KEY)"])
+
+      (testing "when the table is empty, reconcile-sequence-for-column! sets the sequence to 1"
+        (reconcile-sequence-for-column! test-db "sequence_test" "id")
+        (insert-dummy)
+        (is (= 1 (max-id))))
+
       (testing "where the sequence object is out of date"
         (dotimes [_ 5] (insert-dummy))
-        (insert-dummy)
         (set-sequence-value 1)
         (testing "inserting fails"
           (is (thrown-with-msg? PSQLException #"duplicate key value"
