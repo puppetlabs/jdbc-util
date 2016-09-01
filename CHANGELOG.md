@@ -1,3 +1,8 @@
+## 0.4.9
+
+ * Fix a bug with `reconcile-sequence-for-column!` that prevented it from
+   working when the given column was empty.
+
 ## 0.4.8
 
  * Block startup of `:replication-mode` replicas waiting on migrations. If the
