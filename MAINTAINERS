@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "file_format": "This MAINTAINERS file format is described at https://github.com/puppetlabs/maintainers",
+  "issues": "https://github.com/puppetlabs/jdbc-util/issues",
+  "people": [
+    {
+      "github": "jonathannewman",
+      "email": "jonathan.newman@puppet.com",
+      "name": "Jonathan Newman"
+    },
+    {
+      "github": "pcarlisle",
+      "email": "patrick.carlisle@puppet.com",
+      "name": "Patrick Carlisle"
+    },
+    {
+      "github": "aperiodic",
+      "email": "dan.lidral-porter@puppet.com",
+      "name": "Dan Lidral-Porter"
+    }
+  ]
+}

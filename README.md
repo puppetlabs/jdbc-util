@@ -85,10 +85,6 @@ this project.
 You'll need PostgreSQL installed (9.4 is the mainly-used version for us right
 now), and set up a "jdbc_util_test" DB and user with password "foobar".
 
-## Maintenance
-Maintainers: Steve Axthelm <steve@puppet.com>
-Tickets: [Puppet Enterprise](https://tickets.puppetlabs.com/browse/ENTERPRISE/). Make sure to set component to "jdbc-util".
-
 ## License
 
 Copyright © 2016 Puppet, Inc.
