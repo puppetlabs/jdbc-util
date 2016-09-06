@@ -1,6 +1,6 @@
 (ns puppetlabs.jdbc-util.pglogical-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.jdbc-util.pglogical :refer :all :as pglogical]))
+            [puppetlabs.jdbc-util.pglogical :refer :all]))
 
 (deftest wrap-ddl-for-pglogical-test
   (is (= (str "do 'begin perform"
@@ -23,13 +23,3 @@
   (testing "when no subscriptions are configured, returns :disabled"
     (testing "and the rest are running, returns :none"
       (is (= :none (consolidate-replica-status []))))))
-
-(deftest replication-status-test
-  (testing "when no database connection is available"
-    (with-redefs [pglogical/provider-replication-status (fn [db]
-                                                          (Thread/sleep 10000))]
-      (is (= :unknown (#'pglogical/replication-status {:classname "org.postgresql.Driver"
-                                                       :subprotocol "postgresql"
-                                                       :subname "fakedb"
-                                                       :user "fakedb"
-                                                       :password "fakedb"} :source))))))

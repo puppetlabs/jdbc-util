@@ -2,7 +2,7 @@
   (:import [org.postgresql.util PSQLException PSQLState])
   (:require [clojure.java.jdbc :as jdbc]
             [puppetlabs.i18n.core :refer [tru]]
-            [puppetlabs.jdbc-util.core :refer [has-extension? with-timeout db-status-timeout-secs]]))
+            [puppetlabs.jdbc-util.core :refer [has-extension?]]))
 
 (defn has-pglogical-extension? [db]
   (has-extension? db "pglogical"))
@@ -119,17 +119,15 @@
 
 (defn- replication-status
   "Given a DB connection for a pglogical node and the replication mode of :none,
-  :source or :replica, query replication status. Returns a status
-  keyword (possibly :unknown), or :none if replication-mode is :none. Valid
-  status values vary depending on thew role; see other replication-status
-  functions for more information."
-  [db replication-mode timeout]
-  (with-timeout timeout :unknown
-    (case replication-mode
-      :source (provider-replication-status db)
-      :replica (replica-replication-status db)
-      :none :none
-      nil :none)))
+  :source or :replica, query replication status. Returns a status keyword,
+  or :none if replication-mode is :none. Valid status values vary depending on
+  thew role; see other replication-status functions for more information."
+  [db replication-mode]
+  (case replication-mode
+    :source (provider-replication-status db)
+    :replica (replica-replication-status db)
+    :none :none
+    nil :none))
 
 (defn- format-replication-alert
   "Produce an alert that can be used if replication is down.
@@ -176,11 +174,9 @@
 
   The value at the :structured-status key should be included in the tk-status
   response at the path [:status :replication]."
-  ([db replication-mode service-name]
-   (combined-replication-status db replication-mode service-name db-status-timeout-secs))
-  ([db replication-mode service-name timeout]
-   (let [status (replication-status db replication-mode timeout)]
-     {:alerts (some-> (format-replication-alert service-name status)
-                      vector)
-      :structured-status {:mode replication-mode
-                          :status status}})))
+  [db replication-mode service-name]
+  (let [status (replication-status db replication-mode)]
+    {:alerts (some-> (format-replication-alert service-name status)
+                     vector)
+     :structured-status {:mode replication-mode
+                         :status status}}))
