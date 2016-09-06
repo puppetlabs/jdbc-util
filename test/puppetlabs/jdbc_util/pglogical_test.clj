@@ -32,4 +32,6 @@
                                                        :subprotocol "postgresql"
                                                        :subname "fakedb"
                                                        :user "fakedb"
-                                                       :password "fakedb"} :source))))))
+                                                       :password "fakedb"}
+                                                      :source
+                                                      4))))))
