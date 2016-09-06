@@ -32,11 +32,9 @@
      (future-cancel f#)
      result#))
 
-(def db-status-timeout-secs 4)
-
 (defn db-up?
   [db-spec]
-  (let [result (with-timeout db-status-timeout-secs :timeout
+  (let [result (with-timeout 4 :timeout
                  (try (let [select-42 "SELECT (a - b) AS answer FROM (VALUES ((7 * 7), 7)) AS x(a, b)"
                             [{:keys [answer]}] (jdbc/query db-spec [select-42])]
                         (= answer 42))
