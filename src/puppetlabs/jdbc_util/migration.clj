@@ -8,15 +8,15 @@
   "Given a user defined database config, transform the config into a db-spec
   appropriate for passing to migratus's migrate function."
   [db-config]
-  (let [user (or (:migration-user db-config)
-                 (:user db-config))
-        password (or (:migration-password db-config)
-                     (:password db-config))]
-    (-> db-config
-        (assoc :user user
-               :password password)
-        (dissoc :migration-user
-                :migration-password))))
+  (let [?user (or (:migration-user db-config)
+                  (:user db-config))
+        ?password (if (:migration-user db-config)
+                    (:migration-password db-config)
+                    (:password db-config))]
+    (cond-> db-config
+      :always   (dissoc :password, :migration-user, :migration-password)
+      ?user     (assoc :user ?user)
+      ?password (assoc :password ?password))))
 
 (defn migrate
   "Migrate 'db' using migratus with a given 'migration-dir'."
