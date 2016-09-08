@@ -1,3 +1,10 @@
+## 0.4.11
+
+ * Fixed a bug with `spec->migration-db-spec` that would allow nil `:password`
+   keys to appear in the output. The same function now also properly separates
+   `:user` from `:migration-password` and `:migration-user` from `:password`,
+   so that the two sets of credentials won't be erroneously combined.
+
 ## 0.4.10
 
  * Added the ability to pass in a timeout to `combined-replication-status`
