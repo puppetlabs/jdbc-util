@@ -1,6 +1,6 @@
 (def ks-version "1.0.0")
 
-(defproject puppetlabs/jdbc-util "0.4.10"
+(defproject puppetlabs/jdbc-util "0.4.11-SNAPSHOT"
   :description "Common JDBC helpers for use in Puppet Labs projects"
   :url "https://github.com/puppetlabs/jdbc-util"
 
