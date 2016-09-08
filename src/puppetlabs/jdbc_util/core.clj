@@ -197,7 +197,7 @@
   [db table column]
   (if-let [sequence-name (get-sequence-name-for-column db table column)]
     (jdbc/with-db-transaction [txn-db db]
-      (jdbc/execute! txn-db [(format "LOCK TABLE \"%s\" IN EXCLUSIVE MODE NOWAIT" table)])
+      (jdbc/execute! txn-db [(format "LOCK TABLE \"%s\" IN EXCLUSIVE MODE" table)])
       (jdbc/query txn-db [(format "SELECT setval('%s', COALESCE(max(\"%s\")+1, 1), false) FROM \"%s\""
                                   sequence-name column table)]))
     (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))
