@@ -1,3 +1,12 @@
+## 0.4.10
+
+ * Added the ability to pass in a timeout to `combined-replication-status`
+   (defaulting to four seconds) which will cause the replication status to be
+   unknown if the replication status cannot be retrieved in the span of the
+   timeout. This fixed a bug with `replication-status` which caused
+   trapperkeeper-status checks to timeout when no database connection was
+   available because the replication status check was not timing out.
+
 ## 0.4.9
 
  * Fix a bug with `reconcile-sequence-for-column!` that prevented it from
