@@ -1,3 +1,9 @@
+## 0.4.12
+
+ * Remove the `NOWAIT` argument when locking a table for
+   `reconcile-sequence-for-column!`. This is unlikely to do anything but cause
+   problems in most circumstances.
+
 ## 0.4.11
 
  * Fixed a bug with `spec->migration-db-spec` that would allow nil `:password`
