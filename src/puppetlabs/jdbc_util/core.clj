@@ -189,15 +189,28 @@
       first
       :pg_get_serial_sequence))
 
+(defn quoted
+  "Given a psql identifier like public.table-name or column-name, quotes it so
+  that it is suitable to use in jdbc queries.
+  E.g., public.table-name -> \"public\".\"table-name\"
+        column-name -> \"column-name\""
+  [id]
+  (jdbc/as-sql-name (jdbc/quoted \") id))
+
 (defn reconcile-sequence-for-column!
-  "Finds the sequence associated with the given column and sets it to the
-  current maximum value in that column, so that the next value in the sequence
-  will be the current maximum + 1 (or 0, if the table is empty). If the column
-  has no associated sequence, throws an Exception."
+  "Finds the sequence associated with the given column and compares it to the
+  max value in the column. If the sequence is lower, sets it equal to the max
+  value.
+  If the column has no associated sequence, throws an Exception."
   [db table column]
   (if-let [sequence-name (get-sequence-name-for-column db table column)]
-    (jdbc/with-db-transaction [txn-db db]
-      (jdbc/execute! txn-db [(format "LOCK TABLE \"%s\" IN EXCLUSIVE MODE" table)])
-      (jdbc/query txn-db [(format "SELECT setval('%s', COALESCE(max(\"%s\")+1, 1), false) FROM \"%s\""
-                                  sequence-name column table)]))
+    (let [select-last-value (str "(SELECT last_value FROM " (quoted sequence-name) ")")
+          select-max-in-column (str "(SELECT MAX(" (quoted column) ") FROM " (quoted table) ")")]
+      (jdbc/with-db-transaction [txn-db db]
+        (jdbc/execute! txn-db [(format "LOCK TABLE \"%s\" IN EXCLUSIVE MODE" table)])
+        (jdbc/query txn-db [(str "SELECT"
+                                 "  CASE"
+                                 "  WHEN " select-max-in-column " > " select-last-value
+                                 "    THEN setval('" sequence-name "', " select-max-in-column ")"
+                                 "  END")])))
     (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))

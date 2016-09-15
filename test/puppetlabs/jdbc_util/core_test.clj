@@ -231,15 +231,23 @@
   (testing "look for db extension that does not exist"
     (is (not (has-extension? test-db "notanextension")))))
 
+(deftest quoted-test
+  (are [input expected] (= expected (quoted input))
+    "a-z"           "\"a-z\""
+    "a-z.z-a"       "\"a-z\".\"z-a\""
+    "public.foobar" "\"public\".\"foobar\""
+    "foobar"        "\"foobar\""
+    "a.b.c"         "\"a\".\"b\".\"c\""))
+
 (deftest reconcile-sequence-for-column-test
   (let [max-id #(-> (jdbc/query test-db ["SELECT id FROM sequence_test ORDER BY id DESC LIMIT 1"])
                     first
                     :id)
         insert-dummy #(jdbc/execute! test-db ["INSERT INTO sequence_test DEFAULT VALUES"])
         set-sequence-value #(jdbc/query test-db ["SELECT setval('sequence_test_id_seq', ?)" %])
-        current-sequence-value #(-> (jdbc/query test-db ["SELECT currval('sequence_test_id_seq')"])
+        current-sequence-value #(-> (jdbc/query test-db ["SELECT last_value FROM sequence_test_id_seq"])
                                     first
-                                    :currval)]
+                                    :last_value)]
     (testing "given a table with a sequence object"
       (jdbc/execute! test-db ["DROP TABLE IF EXISTS sequence_test CASCADE"])
       (jdbc/execute! test-db ["CREATE TABLE sequence_test (id BIGSERIAL PRIMARY KEY)"])
@@ -258,7 +266,16 @@
           (testing "but not if we call reconcile-sequence-for-column!"
             (set-sequence-value 1)
             (reconcile-sequence-for-column! test-db "sequence_test" "id")
-            (insert-dummy)))))
+            (insert-dummy))))
+
+      (testing "when the last_value of the sequence is greater than the column maximum,"
+        (let [previous-max (max-id)]
+          (jdbc/execute! test-db ["DELETE FROM sequence_test WHERE id = ?" previous-max])
+          (testing "reconcile-sequence-for-column! doesn't change the sequence"
+            (reconcile-sequence-for-column! test-db "sequence_test" "id")
+            (insert-dummy)
+            (is (= (max-id)
+                   (inc previous-max)))))))
 
     (testing "when there is no associated sequence, reconcile-sequence-for-column! throws an exception"
       (is (thrown-with-msg? Exception #"No sequence found"
