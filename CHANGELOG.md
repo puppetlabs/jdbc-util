@@ -1,3 +1,9 @@
+## 0.4.13
+
+  * Change the behavior of `reconcile-sequence-for-column!` so that it will
+    never set a sequence to a lower value than it currently has.
+  * Update the migratus dependency to 0.8.30 (no breaking changes).
+
 ## 0.4.12
 
  * Remove the `NOWAIT` argument when locking a table for
