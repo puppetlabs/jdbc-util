@@ -109,7 +109,7 @@
         (Thread/sleep 2000)
         (is (= {:state :starting}
                (pool/status wrapped)))
-        (swap! ready (constantly true))
+        (reset! ready true)
         (Thread/sleep 600)
         (.getConnection wrapped)
         ;; allow for some variance due to timing
@@ -195,3 +195,17 @@
 
       (is (= 0 (num-migrations-left)))
       (is (= @init-status :completed)))))
+
+(deftest connection-pool-fails-slow
+  (testing "given a configuration for a non-existent database"
+    (let [options (pool/spec->hikari-options {:user "fakeuser"
+                                              :password "fakepassword"
+                                              :subprotocol "postgresql"
+                                              :subname "nocalhost"
+                                              :connection-timeout 1000})
+          config (pool/options->hikari-config options)]
+      (testing "calling connection-pool-with-delayed-init doesn't throw an exception"
+        (pool/connection-pool-with-delayed-init config
+                                                {}
+                                                nil
+                                                1000)))))
