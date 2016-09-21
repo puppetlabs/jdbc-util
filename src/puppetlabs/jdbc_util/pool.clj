@@ -183,6 +183,5 @@
   ([^HikariConfig config init-fn timeout]
    (connection-pool-with-delayed-init config nil init-fn timeout))
   ([^HikariConfig config migration-options init-fn timeout]
-   (let [datasource (HikariDataSource. config)]
-     (.setInitializationFailFast config false)
-     (wrap-with-delayed-init datasource migration-options init-fn timeout))))
+   (.setInitializationFailFast config false)
+   (wrap-with-delayed-init (HikariDataSource. config) migration-options init-fn timeout)))
