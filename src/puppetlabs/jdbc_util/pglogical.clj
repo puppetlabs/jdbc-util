@@ -102,10 +102,10 @@
   or :none."
   [statuses]
   (let [all-active? #(every? true? %)]
-    (case
-        (empty? statuses) :none
-        (all-active? statuses) :active
-        :else :inactive)))
+    (cond
+      (empty? statuses) :none
+      (all-active? statuses) :active
+      :else :inactive)))
 
 (defn- provider-replication-status
   "Given a DB connection for a pglogical provider node, query whether the

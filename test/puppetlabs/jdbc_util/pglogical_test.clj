@@ -24,6 +24,14 @@
     (testing "and the rest are running, returns :none"
       (is (= :none (consolidate-replica-status []))))))
 
+(deftest consolidate-provider-status-test
+  (are [statuses expected] (= expected (#'pglogical/consolidate-provider-status statuses))
+    '() :none
+    '(true) :active
+    '(false) :inactive
+    '(true true) :active
+    '(true false) :inactive))
+
 (deftest replication-status-test
   (testing "when no database connection is available"
     (with-redefs [pglogical/provider-replication-status (fn [db]
