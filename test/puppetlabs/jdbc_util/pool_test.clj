@@ -90,7 +90,6 @@
                           Connection
                           Closeable
                           (close [_] nil))
-        health-registry (atom nil)
         mock-ds (proxy [HikariDataSource] []
                   (getConnection
                     ([]
@@ -103,7 +102,7 @@
                     ([user pass]
                      (.getConnection this))))]
     (testing "the pool retries until it gets a connection"
-      (let [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
+      (with-open [wrapped (pool/wrap-with-delayed-init mock-ds (fn [_] mock-ds) 1)]
         (is (thrown? SQLTransientConnectionException
                      (.getConnection wrapped)))
         (Thread/sleep 2000)
@@ -115,13 +114,91 @@
         ;; allow for some variance due to timing
         (is (<= 4 @retries 5))))))
 
+(deftest delayed-lifecyle
+  (let [config (-> core-test/test-db
+                   pool/spec->hikari-options
+                   pool/options->hikari-config)]
+    (testing "block-until-ready blocks until it is ready"
+      (let [ready (promise)]
+        (with-open [wrapped (pool/connection-pool-with-delayed-init
+                              config (fn [_] (deref ready)) 10000)]
+          (is (= false (pool/init-complete? wrapped)))
+          (is (= false (pool/block-until-ready wrapped 100)))
+          (deliver ready true)
+          (is (pool/block-until-ready wrapped 100))
+          (is (pool/init-complete? wrapped)))))
+
+    (testing "block-until-ready blocks not impacted by exception"
+      (let [ready (promise)]
+        (with-open [wrapped (pool/connection-pool-with-delayed-init
+                              config
+                              (fn [_]
+                                (deref ready)
+                                (throw (RuntimeException. "test exception")))
+                              10000)]
+          (is (= false (pool/init-complete? wrapped)))
+          (is (= false (pool/block-until-ready wrapped 100)))
+          (deliver ready true)
+          (is (pool/block-until-ready wrapped 100))
+          (is (pool/init-complete? wrapped)))))
+
+    (testing "cancel-init cancels the init"
+      (let [ready (promise)]
+        (with-open [wrapped (pool/connection-pool-with-delayed-init
+                              config (fn [_] (deref ready)) 10000)]
+          (is (= false (pool/init-complete? wrapped)))
+          (is (pool/cancel-init wrapped))
+          ;; note -- complete but cancelled!
+          (is (pool/init-complete? wrapped)))))
+
+    (testing "cancel init when init already complete"
+      (let [ready (promise)]
+        (with-open [wrapped (pool/connection-pool-with-delayed-init
+                              config (fn [_] (deref ready)) 10000)]
+          (is (= false (pool/init-complete? wrapped)))
+          (deliver ready true)
+          (is (pool/block-until-ready wrapped 100))
+          (is (pool/init-complete? wrapped))
+          (is (= false (pool/cancel-init wrapped))))))
+
+    (testing "exception thrown during init-fn does not impact shutdown"
+      (let [ready (promise)]
+        (with-open [wrapped (pool/connection-pool-with-delayed-init
+                              config
+                              (fn [_]
+                                (deref ready)
+                                (throw (Exception. "throw exception during init")))
+                              10000)]
+          (is (= false (pool/init-complete? wrapped)))
+          (deliver ready true)
+          (is (pool/block-until-ready wrapped 100))
+          (is (pool/init-complete? wrapped))
+          (is (= false (pool/cancel-init wrapped))))))
+
+    (testing "exception thrown during replica wait for migration does not impact shutdown"
+      (let [ready (promise)]
+        (with-redefs [pool/wait-for-migrations (fn [_ _]
+                                                 (deref ready)
+                                                 (throw (Exception. "throw exception during migration waiting")))]
+          (with-open [wrapped (pool/connection-pool-with-delayed-init
+                                config
+                                {:migration-db     core-test/test-db
+                                 :migration-dir    "test-migrations"
+                                 :replication-mode :replica}
+                                (fn [_] (deref ready)) 10000)]
+            (is (= false (pool/init-complete? wrapped)))
+            (deliver ready true)
+            (is (pool/block-until-ready wrapped 100))
+            (is (pool/init-complete? wrapped))
+            (is (= false (pool/cancel-init wrapped)))))))))
+
 (deftest delayed-init-real-db
   (let [config (-> core-test/test-db
                    pool/spec->hikari-options
                    pool/options->hikari-config)]
     (testing "if the init-fn throws an exception it continues to hand out connections normally"
-      (let [wrapped (pool/connection-pool-with-delayed-init
-                     config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
+      (with-open [wrapped (pool/connection-pool-with-delayed-init
+                            config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
         (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
         (is (= {:state :error
                 :messages ["Initialization resulted in an error: test exception"]}
@@ -138,14 +215,13 @@
                        (pool/status wrapped)))))))))
 
 (deftest health-check
-  (let [test-pool (-> core-test/test-db
-                      pool/spec->hikari-options
-                      pool/options->hikari-config
-                      (pool/connection-pool-with-delayed-init identity 5000))]
+  (with-open [test-pool (-> core-test/test-db
+                            pool/spec->hikari-options
+                            pool/options->hikari-config
+                            (pool/connection-pool-with-delayed-init identity 5000))]
     (.getConnection test-pool)
     (is (= {:state :ready}
-           (pool/status test-pool)))
-    (.close test-pool)))
+           (pool/status test-pool)))))
 
 (deftest migration-db-spec-test
   (let [datasource (-> core-test/test-db
@@ -157,16 +233,18 @@
       (let [!init-with (promise)
             init-fn (fn [init-with]
                       (deliver !init-with init-with))]
-        (pool/connection-pool-with-delayed-init datasource {:migration-db migration-db-spec} init-fn 5000)
-        (let [init-with (deref !init-with 5000 nil)]
-          (is (= "AppPool" (.getPoolName (:datasource init-with)))))))
+        (with-open [_ (pool/connection-pool-with-delayed-init
+                        datasource {:migration-db migration-db-spec} init-fn 5000)]
+          (let [init-with (deref !init-with 5000 nil)]
+            (is (= "AppPool" (.getPoolName (:datasource init-with))))))))
     (testing "the migrate function is called with the migration-db-spec"
       (let [!migrate-with (promise)]
         (with-redefs [migration/migrate (fn [migrate-db migration-dir]
                                           (deliver !migrate-with migrate-db))]
-          (pool/connection-pool-with-delayed-init datasource {:migration-db migration-db-spec} identity 5000)
-          (let [migrate-with (deref !migrate-with 5000 nil)]
-            (is (= migration-db-spec migrate-with))))))))
+          (with-open [_ (pool/connection-pool-with-delayed-init
+                          datasource {:migration-db migration-db-spec} identity 5000)]
+            (let [migrate-with (deref !migrate-with 5000 nil)]
+             (is (= migration-db-spec migrate-with)))))))))
 
 (deftest migration-blocks-initilization
   (let [config (-> core-test/test-db
@@ -181,20 +259,21 @@
     (core/drop-public-tables! core-test/test-db)
     (testing "waiting on migrations blocks startup on replicas"
       (is (= 1 (num-migrations-left)))
-      (pool/connection-pool-with-delayed-init config
-                                              {:migration-db core-test/test-db
-                                               :migration-dir "test-migrations"
-                                               :replication-mode :replica}
-                                              (fn [_] (reset! init-status :completed))
-                                              5000)
-      (is (= 1 (num-migrations-left)))
-      (is (= @init-status :waiting))
+      (with-open [_ (pool/connection-pool-with-delayed-init
+                      config
+                      {:migration-db     core-test/test-db
+                       :migration-dir    "test-migrations"
+                       :replication-mode :replica}
+                      (fn [_] (reset! init-status :completed))
+                      5000)]
+        (is (= 1 (num-migrations-left)))
+        (is (= @init-status :waiting))
 
-      (migration/migrate core-test/test-db "test-migrations")
-      (Thread/sleep wait-for-migrations-ms)
+        (migration/migrate core-test/test-db "test-migrations")
+        (Thread/sleep wait-for-migrations-ms)
 
-      (is (= 0 (num-migrations-left)))
-      (is (= @init-status :completed)))))
+        (is (= 0 (num-migrations-left)))
+        (is (= @init-status :completed))))))
 
 (deftest connection-pool-fails-slow
   (testing "given a configuration for a non-existent database"
@@ -205,7 +284,7 @@
                                               :connection-timeout 1000})
           config (pool/options->hikari-config options)]
       (testing "calling connection-pool-with-delayed-init doesn't throw an exception"
-        (pool/connection-pool-with-delayed-init config
-                                                {}
-                                                nil
-                                                1000)))))
+        (with-open [_ (pool/connection-pool-with-delayed-init config
+                                                              {}
+                                                              nil
+                                                              1000)])))))
