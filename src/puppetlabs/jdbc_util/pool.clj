@@ -7,7 +7,8 @@
            [com.zaxxer.hikari HikariConfig HikariDataSource]
            java.io.Closeable
            [java.sql SQLTransientConnectionException SQLTransientException]
-           javax.sql.DataSource))
+           javax.sql.DataSource
+           (java.util.concurrent ExecutionException)))
 
 (defn add-connectivity-check-timeout-ms
   [^HikariConfig config timeout]
@@ -72,6 +73,17 @@
   (status [this] "Get a map representing the status of a connection pool.")
   (init-error [this] "Return any exception raised by the init function (nil if none)."))
 
+(defprotocol PoolLifetime
+  (block-until-ready [this] [this timeout-ms]
+    "Block execution until initialization is done, or the timeout expires (if specified).
+    If the timeout is specified, returns true if the execution completed within the timeperiod,
+    false if it didn't.")
+  (cancel-init [this] "Attempt to cancel the async initialization.  Returns true if it was cancelled, false otherwise")
+  (init-complete? [this] "Returns true if the init is complete, false otherwise")
+  (close-after-ready [this] [this timeout-ms]
+    "Wait for the init routine to complete and then close the datasource. If the timeout is specified and expires
+    before the init is complete, cancel the init and close the datasource."))
+
 (def replica-migrations-polling-interval-ms 1500)
 
 (defn wait-for-migrations
@@ -107,11 +119,13 @@
          pool-future
          (future
            (loop []
+             (log/debug (trs "{0} - Starting database initialization" (.getPoolName datasource)))
              (if-let [result
                       (try
                         ;; Try to get a connection to make sure the db is ready
                         (.close (.getConnection datasource))
                         (when-let [{:keys [migration-db migration-dir replication-mode]} migration-opts]
+                          (log/debug (trs "{0} - Starting database migration" (.getPoolName datasource)))
                           ;; If we're a replica then pglogical will be
                           ;; replicating our migrations for us, so we poll until
                           ;; the migrations have been replicated
@@ -122,9 +136,12 @@
                               (catch Exception e
                                 (reset! init-error e)
                                 (log/errorf e (trs "{0} - An error was encountered during database migration."
-                                                   (:subname migration-db "unknown")))))))
+                                                   (:subname migration-db "unknown"))))))
+                          (log/debug (trs "{0} - Finished database migration" (.getPoolName datasource))))
                         (try
+                          (log/debug (trs "{0} - Starting post-migration init-fn" (.getPoolName datasource)))
                           (init-fn {:datasource datasource})
+                          (log/debug (trs "{0} - Finished post-migration init-fn" (.getPoolName datasource)))
                           (catch Exception e
                             (reset! init-error e)
                             (log/errorf e (trs "{0} - An error was encountered during initialization."
@@ -172,7 +189,35 @@
            {:state :starting}))
 
        (init-error [this]
-         @init-error)))))
+         @init-error)
+
+       PoolLifetime
+       (block-until-ready [this]
+         (log/info (trs "{0} - Blocking execution until db init has finished" (.getPoolName datasource)))
+         (try
+           (deref pool-future)
+           (catch ExecutionException e
+             (log/warn e (trs "{0} - Exception generated during init" (.getPoolName datasource))))))
+       (block-until-ready [this timeout-ms]
+         (log/info (trs "{0} - Blocking execution until db init has finished with {1} millisecond timeout "
+                        (.getPoolName datasource) timeout-ms))
+         (try
+          (not (nil? (deref pool-future timeout-ms nil)))
+          (catch ExecutionException e
+            (log/warn e (trs "{0} - Exception generated during init" (.getPoolName datasource)))
+            true)))
+       (cancel-init [this]
+         (future-cancel pool-future))
+       (init-complete? [this]
+         (future-done? pool-future))
+       (close-after-ready [this]
+         (block-until-ready this)
+         (.close datasource))
+       (close-after-ready [this timeout-ms]
+         (when-not (block-until-ready this timeout-ms)
+           (log/warn (trs "{0} - Cancelling db-init due to timeout" (.getPoolName datasource)))
+           (cancel-init this))
+         (.close datasource))))))
 
 (defn connection-pool-with-delayed-init
   "Create a connection pool that loops trying to get a connection, and then runs

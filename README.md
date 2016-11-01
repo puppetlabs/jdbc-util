@@ -75,6 +75,27 @@ The status is implemented using an io.dropwizard.metrics HealthCheckRegistry. If
 one is provided to the hikari config under `:health-check-registry` it will be
 used, otherwise one will be created automatically.
 
+#### Lifetime
+
+The pool implements a lifetime protocol (`pool/PoolLifetime`) to provide methods
+of determining if the initialization is complete, cancelling the initialization
+if possible, or waiting on the completion of the initialization.  Additionally
+a new close interface `close-after-ready` waits to close the datasource until
+the init routine is complete.
+
+Before the initialization is complete `init-complete?` returns false.  If the
+initialization routine finishes, fails or was cancelled, `init-complete?` returns
+true.
+
+`cancel-init` will attempt to cancel the async initialization process and return
+true if it was cancelled, or false if it wasn't.  If the init routine has already
+completed, `cancel-init` returns false.
+
+`close-after-ready` has two forms, one that will block forever until the init
+routine completes, or one that accepts a timeout in milliseconds.  If the
+timeout is exceeded prior to the init completing, the routine will attempt to cancel
+the init and then immediately close the connection.
+
 ## Support
 
 To file a bug, please open a Jira ticket against this project. Bugs and PRs are
