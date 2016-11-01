@@ -1,3 +1,17 @@
+## 0.5.0
+  * Add lifetime protocol to pool interface to allow shutdown routines to wait
+    for initialization to complete.
+
+## 0.4.15
+
+  * Fix `consolidate-provider-status` to correctly report the status.
+
+## 0.4.14
+
+  * Fix an issue where the Hikari config option `setInitializationFailFast` was
+    set after the connection was made, which meant that the option wasn't applied
+    to the connection.
+
 ## 0.4.13
 
   * Change the behavior of `reconcile-sequence-for-column!` so that it will
