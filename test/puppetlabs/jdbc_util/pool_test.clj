@@ -137,9 +137,9 @@
                                 (throw (RuntimeException. "test exception")))
                               10000)]
           (is (= false (pool/init-complete? wrapped)))
-          (is (= false (pool/block-until-ready wrapped 100)))
+          (is (= false (pool/block-until-ready wrapped 500)))
           (deliver ready true)
-          (is (pool/block-until-ready wrapped 100))
+          (is (pool/block-until-ready wrapped 500))
           (is (pool/init-complete? wrapped)))))
 
     (testing "cancel-init cancels the init"
@@ -157,7 +157,7 @@
                               config (fn [_] (deref ready)) 10000)]
           (is (= false (pool/init-complete? wrapped)))
           (deliver ready true)
-          (is (pool/block-until-ready wrapped 100))
+          (is (pool/block-until-ready wrapped 500))
           (is (pool/init-complete? wrapped))
           (is (= false (pool/cancel-init wrapped))))))
 
@@ -171,7 +171,7 @@
                               10000)]
           (is (= false (pool/init-complete? wrapped)))
           (deliver ready true)
-          (is (pool/block-until-ready wrapped 100))
+          (is (pool/block-until-ready wrapped 500))
           (is (pool/init-complete? wrapped))
           (is (= false (pool/cancel-init wrapped))))))
 
@@ -188,7 +188,7 @@
                                 (fn [_] (deref ready)) 10000)]
             (is (= false (pool/init-complete? wrapped)))
             (deliver ready true)
-            (is (pool/block-until-ready wrapped 100))
+            (is (pool/block-until-ready wrapped 500))
             (is (pool/init-complete? wrapped))
             (is (= false (pool/cancel-init wrapped)))))))))
 
