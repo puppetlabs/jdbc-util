@@ -20,7 +20,7 @@
   (jdbc/execute! db ["CREATE TABLE books (
                         title TEXT PRIMARY KEY,
                         author TEXT REFERENCES authors (name))"])
-(jdbc/execute! db ["CREATE TABLE weird_junk ( id UUID PRIMARY KEY )"])
+  (jdbc/execute! db ["CREATE TABLE weird_junk ( id UUID PRIMARY KEY )"])
   (jdbc/insert-multi! db :authors
                       [{:name "kafka"  :favorite_color "black"}
                        {:name "borges" :favorite_color "purple"}
