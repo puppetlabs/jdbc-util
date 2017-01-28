@@ -1,5 +1,3 @@
-(def ks-version "1.0.0")
-
 (defproject puppetlabs/jdbc-util "0.5.1-SNAPSHOT"
   :description "Common JDBC helpers for use in Puppet Labs projects"
   :url "https://github.com/puppetlabs/jdbc-util"
@@ -14,11 +12,11 @@
                  [org.postgresql/postgresql "9.4.1208.jre7"]
                  [migratus "0.8.30"]
                  [com.zaxxer/HikariCP "2.4.3"]
-                 [puppetlabs/kitchensink ~ks-version]
+                 [puppetlabs/kitchensink "2.2.0"]
                  [puppetlabs/i18n "0.6.0"]
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
                  [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]
-                 [cheshire "5.5.0"]]
+                 [cheshire "5.6.1"]]
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.21"]
                                   [org.slf4j/slf4j-log4j12 "1.7.21"]

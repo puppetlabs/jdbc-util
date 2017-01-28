@@ -73,6 +73,61 @@
           false)
       result)))
 
+(defn db-exists?
+  [admin-db-spec db-name]
+  (-> (jdbc/query admin-db-spec ["SELECT 1 AS exists FROM pg_database WHERE datname = ?" db-name])
+    first
+    :exists
+    (= 1)))
+
+(defn create-db!
+  "Given a DB spec that has a user with permission to create databases and that
+  connects to a database that isn't `db-name`, the safe postgres identifier
+  `db-name` (see the docstring of `safe-pg-identifier?` for the definition of
+  'safe'), and the safe postgres identifier `db-owner`, create the
+  database `db-name` owned by `db-owner`, with the DB's encoding set to UTF-8."
+  [admin-db-spec db-name db-owner]
+  {:pre [(safe-pg-identifier? db-name) (safe-pg-identifier? db-owner)]}
+  (let [sql (format "CREATE DATABASE \"%s\" WITH OWNER \"%s\" ENCODING 'UTF8'" db-name db-owner)]
+    (jdbc/execute! admin-db-spec [sql] {:transaction? false})))
+
+(defn drop-db!
+  "Given a DB spec that has a user with permission to drop the database
+  `db-name` and that connects to a database that isn't `db-name` and the safe
+  postgres identifier `db-name` (see the docstring for `pg-identifier?` for the
+  definition of 'safe'), drop the database named by `db-name`."
+  [admin-db-spec db-name]
+  {:pre [(safe-pg-identifier? db-name)]}
+  (let [sql (format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
+    (jdbc/execute! admin-db-spec [sql] {:transaction? false})
+    nil))
+
+(defn user-exists?
+  [admin-db-spec user-name]
+  (-> (jdbc/query admin-db-spec ["SELECT 1 AS present FROM pg_roles WHERE rolname = ?" user-name])
+    first
+    :present
+    (= 1)))
+
+(defn create-user!
+  "Given a DB spec that has a user with permission to create users and that
+  connects to a database that isn't `db-name`, the safe postgres identifier
+  `db-name` (see the docstring of `safe-pg-identifier?` for the definition of
+  'safe'), and the safe postgres identifier `db-owner`, create the
+  database `db-name` owned by `db-owner`, with the DB's encoding set to UTF-8."
+  [admin-db-spec username password]
+  {:pre [(safe-pg-identifier? username)]}
+  (let [sql (format "CREATE ROLE \"%s\" WITH LOGIN PASSWORD %s" username (pg-sql-escape password))]
+    (jdbc/execute! admin-db-spec [sql])
+    nil))
+
+(defn drop-user!
+  [admin-db-spec username]
+  {:pre [(safe-pg-identifier? username)]}
+  (let [sql (format "DROP ROLE IF EXISTS \"%s\"" username)]
+    (jdbc/execute! admin-db-spec [sql])
+    nil))
+
 (defn public-tables
   "Get the names of all public tables in a database"
   [db-spec]
