@@ -8,8 +8,7 @@
             [puppetlabs.jdbc-util.core :refer :all]))
 
 (def test-db
-  {:classname "org.postgresql.Driver"
-   :subprotocol "postgresql"
+  {:subprotocol "postgresql"
    :subname (or (System/getenv "JDBCUTIL_DBNAME") "jdbc_util_test")
    :user (or (System/getenv "JDBCUTIL_DBUSER") "jdbc_util_test")
    :password (or (System/getenv "JDBCUTIL_DBPASS") "foobar")})
