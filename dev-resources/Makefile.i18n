@@ -19,6 +19,11 @@ LOCALES=$(basename $(notdir $(wildcard locales/*.po)))
 BUNDLE_DIR=$(subst .,/,$(BUNDLE))
 BUNDLE_FILES=$(patsubst %,resources/$(BUNDLE_DIR)/Messages_%.class,$(MESSAGE_LOCALE) $(LOCALES))
 FIND_SOURCES=find src -name \*.clj
+# xgettext before 0.19 does not understand --add-location=file. Even CentOS
+# 7 ships with an older gettext. We will therefore generate full location
+# info on those systems, and only file names where xgettext supports it
+LOC_OPT=$(shell xgettext --add-location=file -f - </dev/null >/dev/null 2>&1 && echo --add-location=file || echo --add-location)
+
 LOCALES_CLJ=resources/locales.clj
 define LOCALES_CLJ_CONTENTS
 {
@@ -30,31 +35,35 @@ endef
 export LOCALES_CLJ_CONTENTS
 
 
-i18n: update-pot msgfmt
+i18n: msgfmt
 
 # Update locales/messages.pot
 update-pot: locales/messages.pot
 
 locales/messages.pot: $(shell $(FIND_SOURCES)) | locales
-	@tmp=$(mktemp $@.tmp.XXXX);                                        \
-	$(FIND_SOURCES)                                                    \
-	    | xgettext --from-code=UTF-8 --language=lisp                   \
-	               --copyright-holder 'Puppet <docs@puppet.com>' -F    \
-	               --package-name "$(BUNDLE)"                          \
-	               --package-version "$(BUNDLE_VERSION)"               \
-	               --msgid-bugs-address "docs@puppet.com"              \
-	               -ktrs:1 -ki18n/trs:1                                \
-	               -ktru:1 -ki18n/tru:1                                \
-	               -kmark:1 -ki18n/mark:1                              \
-	               -ktrun:1,2 -ki18n/trun:1,2                          \
-	               -ktrsn:1,2 -ki18n/trsn:1,2                          \
-	               --add-comments -o $tmp -f -;                        \
-	sed -i -e 's/charset=CHARSET/charset=UTF-8/' $tmp;                 \
-	sed -i -e 's/POT-Creation-Date: [^\\]*/POT-Creation-Date: /' $tmp; \
-	if ! diff -q -I POT-Creation-Date $tmp $@ >& /dev/null; then       \
-	    mv $tmp $@;                                                    \
-	else                                                               \
-	    rm $tmp;                                                       \
+	@tmp=$$(mktemp $@.tmp.XXXX);                                            \
+	$(FIND_SOURCES)                                                         \
+	    | xgettext --from-code=UTF-8 --language=lisp                        \
+	               --copyright-holder='Puppet <docs@puppet.com>'            \
+	               --package-name="$(BUNDLE)"                               \
+	               --package-version="$(BUNDLE_VERSION)"                    \
+	               --msgid-bugs-address="docs@puppet.com"                   \
+	               -k                                                       \
+	               -kmark:1 -ki18n/mark:1                                   \
+	               -ktrs:1 -ki18n/trs:1                                     \
+	               -ktru:1 -ki18n/tru:1                                     \
+	               -ktrun:1,2 -ki18n/trun:1,2                               \
+	               -ktrsn:1,2 -ki18n/trsn:1,2                               \
+	               $(LOC_OPT)                                               \
+	               --add-comments --sort-by-file                            \
+	               -o $$tmp -f -;                                           \
+	sed -i.bak -e 's/charset=CHARSET/charset=UTF-8/' $$tmp;                 \
+	sed -i.bak -e 's/POT-Creation-Date: [^\\]*/POT-Creation-Date: /' $$tmp; \
+	rm -f $$tmp.bak;                                                        \
+	if ! diff -q -I POT-Creation-Date $$tmp $@ >/dev/null 2>&1; then        \
+	    mv $$tmp $@;                                                        \
+	else                                                                    \
+	    rm $$tmp; touch $@;                                                 \
 	fi
 
 # Run msgfmt over all .po files to generate Java resource bundles
@@ -76,12 +85,11 @@ resources/$(BUNDLE_DIR)/Messages_%.class: locales/%.po | resources
 resources/$(BUNDLE_DIR)/Messages_$(MESSAGE_LOCALE).class: locales/messages.pot | resources
 	msgfmt --java2 -d resources -r $(BUNDLE).Messages -l $(MESSAGE_LOCALE) $<
 
-# Translators use this when they update translations; this copies any
-# changes in the pot file into their language-specific po file
-locales/%.po: locales/messages.pot
-	@if [ -f $@ ]; then                                           \
-	    msgmerge -U $@ $< && touch $@;                            \
-	else                                                          \
+# Use this to initialize translations. Updating the PO files is done
+# automatically through a CI job that utilizes the scripts in the project's
+# `bin` file, which themselves come from the `clj-i18n` project.
+locales/%.po: | locales
+	@if [ ! -f $@ ]; then                                         \
 	    touch $@ && msginit --no-translator -l $(*F) -o $@ -i $<; \
 	fi
 
@@ -109,7 +117,7 @@ You can use the following targets:
 
   i18n:             refresh all the files in locales/ and recompile resources
   update-pot:       extract strings and update locales/messages.pot
-  locales/LANG.po:  refresh or create translations for LANG
+  locales/LANG.po:  create translations for LANG
   msgfmt:           compile the translations into Java classes; this step is
                     needed to make translations available to the Clojure code
                     and produces Java class files in resources/

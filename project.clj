@@ -14,7 +14,7 @@
                  [migratus "0.8.30"]
                  [com.zaxxer/HikariCP "2.4.3"]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/i18n "0.4.0"]
+                 [puppetlabs/i18n "0.6.0"]
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
                  [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]
                  [cheshire "5.5.0"]]
@@ -26,7 +26,7 @@
   :plugins [[lein-release "1.0.5"]
             ;; pin clojure to resolve dependency conflict with lein-release and i18n.
             [org.clojure/clojure "1.8.0"]
-            [puppetlabs/i18n "0.4.0"]]
+            [puppetlabs/i18n "0.6.0"]]
 
   :jar-exclusions [#"\.sw[a-z]$" #"~$" #"logback\.xml$" #"log4j\.properties$"]
 
