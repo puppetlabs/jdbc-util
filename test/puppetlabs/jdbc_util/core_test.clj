@@ -2,10 +2,14 @@
   (:import [java.util UUID]
            [org.postgresql.util PSQLException PSQLState])
   (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [clojure.walk :refer [keywordize-keys]]
             [clojure.java.jdbc :as jdbc]
-            [puppetlabs.jdbc-util.core :refer :all]))
+            [clojure.test :refer :all]
+            [clojure.test.check :as tc]
+            [clojure.test.check.generators :as tc-gen]
+            [clojure.test.check.properties :as tc-prop]
+            [clojure.walk :refer [keywordize-keys]]
+            [puppetlabs.jdbc-util.core :refer :all]
+            [puppetlabs.kitchensink.core :as ks]))
 
 (def test-db
   {:subprotocol "postgresql"
@@ -45,6 +49,84 @@
 
 (defn find-author [rows name]
   (first (filter #(= name (:name %)) rows)))
+
+(deftest pg-sql-escape-test
+  (testing "pg-sql-escape"
+    (testing "allows \"Robert'); DROP TABLE students;--\" to be safely inserted"
+      (let [bobby-tables "Robert'); DROP TABLE students;--"
+            color (ks/rand-str :alpha-lower 2)]
+        (jdbc/execute! test-db [(format "INSERT INTO authors (name, favorite_color) VALUES (%s, '%s')"
+                                        (pg-sql-escape bobby-tables) color)])
+        (is (= {:name bobby-tables}
+               (first (jdbc/query test-db ["SELECT name FROM authors WHERE favorite_color = ?"
+                                           color]))))
+        (jdbc/execute! test-db ["DELETE FROM authors WHERE favorite_color = ?" color])))
+
+    (testing "handles strings that try to close the dollar quoting themselves"
+      (dotimes [i 100]
+        (let [rand-tag (if (zero? i)
+                         ""
+                         (ks/rand-str :alpha 5))
+              malicious-string (str "$" rand-tag "$); DROP TABLE jdbc_util_test;--")
+              escaped (pg-sql-escape malicious-string)]
+          (is (= malicious-string
+                 (-> (jdbc/query test-db [(format "SELECT %s AS string" escaped)])
+                   first
+                   :string))))))
+
+    (testing "produces escaped strings that satisfy the expected properties"
+      (tc/quick-check
+        10000 ; 10k
+        (tc-prop/for-all [s tc-gen/string]
+          (let [escaped (pg-sql-escape s)
+                [delim0 tag0] (re-find #"^\$([^$]+)\$" escaped)
+                [delim1 tag1] (re-find #"\$([^$]+)\$$" escaped)
+                delim-occurrences (re-seq (re-pattern (str "\\$" tag0 "\\$")) escaped)]
+            (and delim0 tag0 delim1 tag1 ; escaped string has delimiters at beginning & end
+                 (= delim0 delim1) ; delimiters are the same at beginning & end
+                 (= 2 (count delim-occurrences)) ; delimiters only appear at beginning & end
+                 (.contains escaped s)))))))) ; escaped string contains original string
+
+(defn- randomly-insert-from
+  [character-set]
+  (fn rand-insert
+    ([s] (rand-insert s (inc (rand-int 5))))
+    ([s insertions]
+     (let [s-length (.length s)
+           i (rand-int (inc s-length))
+           s' (str (subs s 0 i)
+                   (rand-nth character-set)
+                   (subs s i s-length))]
+       (if (<= insertions 1)
+         s'
+         (recur s' (dec insertions)))))))
+
+(deftest safe-pg-identifier?-test
+  (testing "safe-pg-identifier?"
+    (testing "rejects names with symbols besides underscores and hyphens"
+      (let [bad-symbols (-> (:symbols ks/ascii-character-sets)
+                          set
+                          (disj \- \_)
+                          vec)
+            insert-bad-symbols (randomly-insert-from bad-symbols)]
+        (tc/quick-check
+          10000
+          ;; shrinking doesn't work because of this here fmap of a random fn
+          (tc-prop/for-all [s (tc-gen/fmap insert-bad-symbols tc-gen/string-alphanumeric)]
+            (false? (safe-pg-identifier? s))))))
+
+    (testing "accepts names with digits, underscores, hyphens, and alphabetical characters"
+      (are [nombre] (true? (safe-pg-identifier? nombre))
+        "zaphod42"
+        "righteous-lisp-style"
+        "profane_c_convention"
+        "αβγ"
+        "Přílišžluťoučkýkůňúpělďábelskéódy"
+        "YxskaftbudgevårWC-zonmöIQ-hjälp"
+        "Эхчужакобщийсъёмценшляпюфтьвдрызг"
+        "หัดอภัยเหมือนกีฬาอัชฌาสัย"
+        "लाल"
+        "石室诗士施氏嗜狮誓食十狮"))))
 
 (deftest db-up?-test
   (testing "db-up?"

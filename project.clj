@@ -10,6 +10,7 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.6.2-alpha3"]
+                 [org.clojure/test.check "0.9.0"]
                  [org.postgresql/postgresql "9.4.1208.jre7"]
                  [migratus "0.8.30"]
                  [com.zaxxer/HikariCP "2.4.3"]

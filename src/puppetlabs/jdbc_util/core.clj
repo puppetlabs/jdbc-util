@@ -8,6 +8,31 @@
             [puppetlabs.i18n.core :refer [trs trsn]]
             [puppetlabs.kitchensink.core :as ks]))
 
+(defn pg-sql-escape
+  "Given a string (containing any characters whatsoever), return the string in
+  dollar-quoted PostgreSQL string literal format, which is safe to naively
+  interpolate as-is into raw SQL strings."
+  [s]
+  (let [delim (str "$" (ks/rand-str :alpha 5) "$")]
+    ;; ok, there do exist strings that can't be delimited like this, but they're
+    ;; pathological: they contain every possible 5-character alphanumeric
+    ;; string, each one surrounded by dollar signs, making them at least 2.28
+    ;; billion characters (6 * 52^5) long.
+    (if (.contains s delim)
+      (recur s)
+      (str delim s delim))))
+
+(defn safe-pg-identifier?
+  "This matches the safe subset of postgres identifiers that have no symbols
+  besides '-' and '_', which we allow in `create-db` and `drop-db`. Because
+  clojure.java.jdbc doesn't provide any way to parametrize a string such that it
+  ends up as an identifier in the parametrized SQL (rather than a string
+  literal), we insert the identifiers into the SQL with quotes but no other
+  escaping. In order to avoid complicated and error-prone escaping logic to
+  ensure the quoting is not broken, we instead only accept these identifiers"
+  [s]
+  (boolean (re-matches #"(\p{IsAlphabetic}|-|_|\p{IsDigit})+" s)))
+
 (defn connection-pool
   "Given a DB spec map containing :subprotocol, :subname, :user, and :password
   keys, return a pooled DB spec map (one containing just the :datasource key
