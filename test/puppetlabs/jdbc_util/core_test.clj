@@ -3,6 +3,7 @@
            [org.postgresql.util PSQLException PSQLState])
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as tc-gen]
@@ -145,8 +146,14 @@
       (with-redefs [jdbc/query (fn [_ _] (Thread/sleep 5000) [{:answer 42}])]
         (is (false? (db-up? nil)))))))
 
+(defn- subname->db-name
+  [subname]
+  (-> (java.net.URI. subname)
+    .getPath
+    (str/replace #"^\/" "")))
+
 (deftest db-exists?-test
-  (is (true? (db-exists? test-db (:subname test-db))))
+  (is (true? (db-exists? test-db (-> test-db :subname subname->db-name))))
   (is (false? (db-exists? test-db "no-database-here"))))
 
 (defn- rand-db-name [] (str "jdbc-util-test-db-" (ks/rand-str :alpha-lower 12)))
