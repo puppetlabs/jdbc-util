@@ -205,8 +205,8 @@
                (pool/status wrapped)))))
 
     (testing "if init-fn throws an exception in a non english locale"
-      (let [eo (string-as-locale "eo")]
-        (with-user-locale eo
+      (let [fo (string-as-locale "fo")]
+        (with-user-locale fo
          (let [wrapped (pool/connection-pool-with-delayed-init
                         config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
                 (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
