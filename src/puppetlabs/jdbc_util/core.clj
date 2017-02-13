@@ -1,37 +1,28 @@
 (ns puppetlabs.jdbc-util.core
   (:import [com.zaxxer.hikari HikariDataSource]
            [java.util.regex Pattern]
-           [org.postgresql.util PGobject PSQLException])
+           [org.postgresql.util PGobject PSQLException]
+           [org.postgresql.core Utils])
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :refer [trs trsn]]
             [puppetlabs.kitchensink.core :as ks]))
 
-(defn pg-sql-escape
-  "Given a string (containing any characters whatsoever), return the string in
-  dollar-quoted PostgreSQL string literal format, which is safe to naively
-  interpolate as-is into raw SQL strings."
+(defn pg-escape-string
+  "Takes an arbitrary string, escapes any SQL quoting meta-characters, and
+  returns it in SQL string literal format to be naively interpolated into an SQL
+  string. Only for use with unplanned statements (those besides SELECT, INSERT,
+  UPDATE, and DELETE), which do not accept query parameters."
   [s]
-  (let [delim (str "$" (ks/rand-str :alpha 5) "$")]
-    ;; ok, there do exist strings that can't be delimited like this, but they're
-    ;; pathological: they contain every possible 5-character alphanumeric
-    ;; string, each one surrounded by dollar signs, making them at least 2.28
-    ;; billion characters (6 * 52^5) long.
-    (if (.contains s delim)
-      (recur s)
-      (str delim s delim))))
+  (let [escaped (-> (Utils/escapeLiteral nil s true) .toString)]
+    (str "'" escaped "'")))
 
-(defn safe-pg-identifier?
-  "This matches the safe subset of postgres identifiers that have no symbols
-  besides '-' and '_', which we allow in `create-db` and `drop-db`. Because
-  clojure.java.jdbc doesn't provide any way to parametrize a string such that it
-  ends up as an identifier in the parametrized SQL (rather than a string
-  literal), we insert the identifiers into the SQL with quotes but no other
-  escaping. In order to avoid complicated and error-prone escaping logic to
-  ensure the quoting is not broken, we instead only accept these identifiers"
+(defn pg-escape-identifier
+  "Escape an arbitrary string to make it safe to naively interpolate into an SQL
+  string as an identifier. Use of this function is discouraged."
   [s]
-  (boolean (re-matches #"(\p{IsAlphabetic}|-|_|\p{IsDigit})+" s)))
+  (-> (Utils/escapeIdentifier nil s) .toString))
 
 (defn connection-pool
   "Given a DB spec map containing :subprotocol, :subname, :user, and :password
@@ -82,13 +73,13 @@
 
 (defn create-db!
   "Given a DB spec that has a user with permission to create databases and that
-  connects to a database that isn't `db-name`, the safe postgres identifier
-  `db-name` (see the docstring of `safe-pg-identifier?` for the definition of
-  'safe'), and the safe postgres identifier `db-owner`, create the
-  database `db-name` owned by `db-owner`, with the DB's encoding set to UTF-8."
+  connects to a database that isn't `db-name`, the database's name, and the name
+  of the user that will own the database, creates the database `db-name` owned by
+  `db-owner`, with the DB's encoding set to UTF-8."
   [admin-db-spec db-name db-owner]
-  {:pre [(safe-pg-identifier? db-name) (safe-pg-identifier? db-owner)]}
-  (let [sql (format "CREATE DATABASE \"%s\" WITH OWNER \"%s\" ENCODING 'UTF8'" db-name db-owner)]
+  (let [sql (format "CREATE DATABASE %s WITH OWNER %s ENCODING 'UTF8'"
+                    (pg-escape-identifier db-name)
+                    (pg-escape-identifier db-owner))]
     (jdbc/execute! admin-db-spec [sql] {:transaction? false})))
 
 (defn drop-db!
@@ -97,8 +88,7 @@
   postgres identifier `db-name` (see the docstring for `pg-identifier?` for the
   definition of 'safe'), drop the database named by `db-name`."
   [admin-db-spec db-name]
-  {:pre [(safe-pg-identifier? db-name)]}
-  (let [sql (format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
+  (let [sql (format "DROP DATABASE IF EXISTS %s" (pg-escape-identifier db-name))]
     (jdbc/execute! admin-db-spec [sql] {:transaction? false})
     nil))
 
@@ -116,15 +106,15 @@
   'safe'), and the safe postgres identifier `db-owner`, create the
   database `db-name` owned by `db-owner`, with the DB's encoding set to UTF-8."
   [admin-db-spec username password]
-  {:pre [(safe-pg-identifier? username)]}
-  (let [sql (format "CREATE ROLE \"%s\" WITH LOGIN PASSWORD %s" username (pg-sql-escape password))]
+  (let [sql (format "CREATE ROLE %s WITH LOGIN PASSWORD %s"
+                    (pg-escape-identifier username)
+                    (pg-escape-string password))]
     (jdbc/execute! admin-db-spec [sql])
     nil))
 
 (defn drop-user!
   [admin-db-spec username]
-  {:pre [(safe-pg-identifier? username)]}
-  (let [sql (format "DROP ROLE IF EXISTS \"%s\"" username)]
+  (let [sql (format "DROP ROLE IF EXISTS %s" (pg-escape-identifier username))]
     (jdbc/execute! admin-db-spec [sql])
     nil))
 

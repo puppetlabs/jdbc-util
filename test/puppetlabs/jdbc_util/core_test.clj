@@ -51,84 +51,6 @@
 (defn find-author [rows name]
   (first (filter #(= name (:name %)) rows)))
 
-(deftest pg-sql-escape-test
-  (testing "pg-sql-escape"
-    (testing "allows \"Robert'); DROP TABLE students;--\" to be safely inserted"
-      (let [bobby-tables "Robert'); DROP TABLE students;--"
-            color (ks/rand-str :alpha-lower 2)]
-        (jdbc/execute! test-db [(format "INSERT INTO authors (name, favorite_color) VALUES (%s, '%s')"
-                                        (pg-sql-escape bobby-tables) color)])
-        (is (= {:name bobby-tables}
-               (first (jdbc/query test-db ["SELECT name FROM authors WHERE favorite_color = ?"
-                                           color]))))
-        (jdbc/execute! test-db ["DELETE FROM authors WHERE favorite_color = ?" color])))
-
-    (testing "handles strings that try to close the dollar quoting themselves"
-      (dotimes [i 100]
-        (let [rand-tag (if (zero? i)
-                         ""
-                         (ks/rand-str :alpha 5))
-              malicious-string (str "$" rand-tag "$); DROP TABLE jdbc_util_test;--")
-              escaped (pg-sql-escape malicious-string)]
-          (is (= malicious-string
-                 (-> (jdbc/query test-db [(format "SELECT %s AS string" escaped)])
-                   first
-                   :string))))))
-
-    (testing "produces escaped strings that satisfy the expected properties"
-      (tc/quick-check
-        10000 ; 10k
-        (tc-prop/for-all [s tc-gen/string]
-          (let [escaped (pg-sql-escape s)
-                [delim0 tag0] (re-find #"^\$([^$]+)\$" escaped)
-                [delim1 tag1] (re-find #"\$([^$]+)\$$" escaped)
-                delim-occurrences (re-seq (re-pattern (str "\\$" tag0 "\\$")) escaped)]
-            (and delim0 tag0 delim1 tag1 ; escaped string has delimiters at beginning & end
-                 (= delim0 delim1) ; delimiters are the same at beginning & end
-                 (= 2 (count delim-occurrences)) ; delimiters only appear at beginning & end
-                 (.contains escaped s)))))))) ; escaped string contains original string
-
-(defn- randomly-insert-from
-  [character-set]
-  (fn rand-insert
-    ([s] (rand-insert s (inc (rand-int 5))))
-    ([s insertions]
-     (let [s-length (.length s)
-           i (rand-int (inc s-length))
-           s' (str (subs s 0 i)
-                   (rand-nth character-set)
-                   (subs s i s-length))]
-       (if (<= insertions 1)
-         s'
-         (recur s' (dec insertions)))))))
-
-(deftest safe-pg-identifier?-test
-  (testing "safe-pg-identifier?"
-    (testing "rejects names with symbols besides underscores and hyphens"
-      (let [bad-symbols (-> (:symbols ks/ascii-character-sets)
-                          set
-                          (disj \- \_)
-                          vec)
-            insert-bad-symbols (randomly-insert-from bad-symbols)]
-        (tc/quick-check
-          10000
-          ;; shrinking doesn't work because of this here fmap of a random fn
-          (tc-prop/for-all [s (tc-gen/fmap insert-bad-symbols tc-gen/string-alphanumeric)]
-            (false? (safe-pg-identifier? s))))))
-
-    (testing "accepts names with digits, underscores, hyphens, and alphabetical characters"
-      (are [nombre] (true? (safe-pg-identifier? nombre))
-        "zaphod42"
-        "righteous-lisp-style"
-        "profane_c_convention"
-        "αβγ"
-        "Přílišžluťoučkýkůňúpělďábelskéódy"
-        "YxskaftbudgevårWC-zonmöIQ-hjälp"
-        "Эхчужакобщийсъёмценшляпюфтьвдрызг"
-        "หัดอภัยเหมือนกีฬาอัชฌาสัย"
-        "लाल"
-        "石室诗士施氏嗜狮誓食十狮"))))
-
 (deftest db-up?-test
   (testing "db-up?"
     (testing "returns true when the DB is up"
@@ -159,43 +81,59 @@
 (defn- rand-db-name [] (str "jdbc-util-test-db-" (ks/rand-str :alpha-lower 12)))
 
 (deftest create-db!-test
-  (testing "create-db!"
-    (let [rand-db (rand-db-name)]
-      (is (false? (db-exists? test-db rand-db)))
-      (create-db! test-db rand-db (:user test-db))
-      (is (true? (db-exists? test-db rand-db)))
-      (jdbc/execute! test-db [(format "DROP DATABASE \"%s\"" rand-db)]
-                     {:transaction? false}))
+  (let [test-with-names (fn [db user]
+                           (is (false? (db-exists? test-db db)))
+                           (create-db! test-db db user)
+                           (is (true? (db-exists? test-db db)))
+                           (jdbc/execute! test-db
+                                          (format "DROP DATABASE %s"
+                                                  (pg-escape-identifier db))
+                                          {:transaction? false}))]
 
-    (testing "appears to use `safe-pg-identifier?` to screen"
-      (testing "DB names"
-        (is (thrown? AssertionError (create-db! test-db "what\"quote" "guccifer"))))
-      (testing "user names"
-        (is (thrown? AssertionError (create-db! test-db "school" "Robert'); DROP TABLE students;")))))
+    (testing "create-db!"
+      (testing "works in the simple case"
+        (test-with-names (rand-db-name) (:user test-db)))
 
-    (testing "throws an error when given a db that already exists"
-      (let [rand-db (rand-db-name)]
-        (create-db! test-db rand-db (:user test-db))
-        (is (thrown-with-msg? PSQLException #"already exists"
-                              (create-db! test-db rand-db (:user test-db))))
-        (jdbc/execute! test-db [(format "DROP DATABASE \"%s\"" rand-db)]
-                       {:transaction? false})))))
+      (testing "handles DB & user names that try to break quoting"
+        (let [bad-db-name "important\";"
+              bad-user-name "Robert'\"); DROP TABLE STUDENTS;--"]
+          (test-with-names bad-db-name (:user test-db))
+
+          (create-user! test-db bad-user-name "foo")
+          (jdbc/execute! test-db
+                         [(format "GRANT %s TO %s"
+                                  (pg-escape-identifier bad-user-name)
+                                  (pg-escape-identifier (:user test-db)))]
+                         {:transaction? false})
+          (test-with-names (rand-db-name) bad-user-name)
+          (drop-user! test-db bad-user-name)))
+
+      (testing "throws an error when given a db that already exists"
+        (let [rand-db (rand-db-name)]
+          (create-db! test-db rand-db (:user test-db))
+          (is (thrown-with-msg? PSQLException #"already exists"
+                                (create-db! test-db rand-db (:user test-db))))
+          (jdbc/execute! test-db [(format "DROP DATABASE \"%s\"" rand-db)]
+                         {:transaction? false}))))))
 
 (deftest drop-db!-test
-  (testing "drop-db!"
-    (testing "works"
-      (let [rand-db (rand-db-name)]
-        (jdbc/execute! test-db [(format "CREATE DATABASE \"%s\"" rand-db)]
-                       {:transaction? false})
-        (is (true? (db-exists? test-db rand-db)))
-        (is (nil? (drop-db! test-db rand-db)))
-        (is (false? (db-exists? test-db rand-db)))))
+  (let [test-with-name (fn [db]
+                         (jdbc/execute! test-db
+                                        [(format "CREATE DATABASE %s" (pg-escape-identifier db))]
+                                        {:transaction? false})
+                         (is (true? (db-exists? test-db db)))
+                         (is (nil? (drop-db! test-db db)))
+                         (is (false? (db-exists? test-db db))))]
 
-    (testing "appears to use `safe-pg-identifier?` to screen DB names"
-      (is (thrown? AssertionError (drop-db! test-db "sad-times;_;"))))
+    (testing "drop-db!"
+      (testing "works in the simple case"
+        (test-with-name (rand-db-name)))
 
-    (testing "doesn't throw when given a database that doesn't exist"
-      (is (nil? (drop-db! test-db "no-such-database"))))))
+      (testing "handles db names that try to break quoting"
+        (test-with-name "lemme\"out';"))
+
+      (testing "doesn't throw when given a database that doesn't exist"
+        (is (nil? (drop-db! test-db "no-such-database")))))))
 
 (deftest user-exists?-test
   (is (true? (user-exists? test-db (:user test-db))))
@@ -204,48 +142,53 @@
 (defn- rand-username [] (str "jdbc-util-test-user-" (ks/rand-str :alpha-lower 12)))
 
 (deftest create-user!-test
-  (testing "create-user!"
-    (testing "works"
-      (let [rand-user (rand-username)]
-        (is (false? (user-exists? test-db rand-user)))
-        (create-user! test-db rand-user "badpassword")
-        (is (true? (user-exists? test-db rand-user)))
-        (jdbc/execute! test-db [(format "DROP USER \"%s\"" rand-user)])))
+  (let [test-with-name (fn [user]
+                         (is (false? (user-exists? test-db user)))
+                         (create-user! test-db user "badpassword")
+                         (is (true? (user-exists? test-db user)))
+                         (jdbc/execute! test-db
+                                        [(format "DROP USER %s" (pg-escape-identifier user))]))]
 
-    (testing "appears to use `safe-pg-identifier?` to screen user names"
-      (is (thrown? AssertionError
-                   (create-user! test-db "eve;PATH=/usr/bin/compromised:$PATH" "123"))))
+    (testing "create-user!"
+      (testing "works in the simple case"
+        (test-with-name (rand-username)))
 
-    (testing "throws an error when given a user that already exists"
-      (let [rand-user (rand-username)]
-        (create-user! test-db rand-user "123")
-        (is (thrown-with-msg? PSQLException #"already exists"
-                              (create-user! test-db rand-user "123")))
-        (jdbc/execute! test-db [(format "DROP USER \"%s\"" rand-user)])))
+      (testing "works when given names that attempt to break quoting"
+        (test-with-name "guccifer\""))
 
-    (testing "doesn't throw when given a password containing sql"
-      ;; I'd like to make a stronger test but typically postgres is configured
-      ;; to trust all local connections even if the password doesn't match. It
-      ;; would be caught by CI, but then we'd have a test only actually tests
-      ;; things when run in CI and not when developers run it
-      (let [rand-user (rand-username)]
-        (is (nil? (create-user! test-db (rand-username) "';$$; DROP TABLE users")))))))
+      (testing "throws an error when given a user that already exists"
+        (let [rand-user (rand-username)]
+          (create-user! test-db rand-user "123")
+          (is (thrown-with-msg? PSQLException #"already exists"
+                                (create-user! test-db rand-user "123")))
+          (jdbc/execute! test-db [(format "DROP USER \"%s\"" rand-user)])))
+
+      (testing "doesn't throw when given a password containing sql"
+        ;; I'd like to make a stronger test but typically postgres is configured
+        ;; to trust all local connections even if the password doesn't match. It
+        ;; would be caught by CI, but then we'd have a test only actually tests
+        ;; things when run in CI and not when developers run it
+        (let [rand-user (rand-username)]
+          (is (nil? (create-user! test-db (rand-username) "';$$; DROP TABLE users"))))))))
 
 (deftest drop-user!-test
-  (testing "drop-user!"
-    (testing "works"
-      (let [rand-user (rand-username)]
-        (jdbc/execute! test-db [(format "CREATE USER \"%s\"" rand-user)]
-                       {:transaction? false})
-        (is (true? (user-exists? test-db rand-user)))
-        (drop-user! test-db rand-user)
-        (is (false? (user-exists? test-db rand-user)))))
+  (let [test-with-name (fn [user]
+                         (jdbc/execute! test-db
+                                        [(format "CREATE USER %s" (pg-escape-identifier user))]
+                                        {:transaction? false})
+                         (is (true? (user-exists? test-db user)))
+                         (drop-user! test-db user)
+                         (is (false? (user-exists? test-db user))))]
 
-    (testing "appears to use `safe-pg-identifier?` to screen user names"
-      (is (thrown? AssertionError (drop-user! test-db "mallory$(rm -rf /)"))))
+    (testing "drop-user!"
+      (testing "works in the simple case"
+        (test-with-name (rand-username)))
 
-    (testing "doesn't throw when given a user that doesn't exist"
-      (is (nil? (drop-user! test-db (rand-username)))))))
+      (testing "works with names that try to break quoting"
+        (test-with-name "equation'\"group"))
+
+      (testing "doesn't throw when given a user that doesn't exist"
+        (is (nil? (drop-user! test-db (rand-username))))))))
 
 (deftest connection-pool-test
   (testing "connection-pool returns a usable DB spec"
