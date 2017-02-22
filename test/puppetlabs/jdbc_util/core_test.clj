@@ -153,6 +153,10 @@
       (testing "works in the simple case"
         (test-with-name (rand-username)))
 
+      (testing "will try to create superusers"
+        (is (thrown-with-msg? PSQLException #"must be superuser"
+              (create-user! test-db "root" "iamroot" {:superuser? true}))))
+
       (testing "works when given names that attempt to break quoting"
         (test-with-name "guccifer\""))
 

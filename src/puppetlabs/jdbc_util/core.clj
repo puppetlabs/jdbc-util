@@ -108,12 +108,15 @@
   optional options map where the :superuser? option will make the created user
   a superuser if the value is exactly `true` (not just truthy); note that only
   superusers can create more superusers."
-  [admin-db-spec username password]
-  (let [sql (format "CREATE ROLE %s WITH LOGIN PASSWORD %s"
-                    (pg-escape-identifier username)
-                    (pg-escape-string password))]
-    (jdbc/execute! admin-db-spec [sql])
-    nil))
+  ([admin-db-spec username password] (create-user! admin-db-spec username password {}))
+  ([admin-db-spec username password options]
+   (let [{:keys [superuser?]} options
+         sql (format (str "CREATE ROLE %s WITH LOGIN PASSWORD %s" (if (true? superuser?)
+                                                                    " SUPERUSER"))
+                     (pg-escape-identifier username)
+                     (pg-escape-string password))]
+     (jdbc/execute! admin-db-spec [sql])
+     nil)))
 
 (defn drop-user!
   "Given a DB spec that connects with a user besides `username` and has
