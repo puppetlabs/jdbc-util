@@ -65,6 +65,8 @@
       result)))
 
 (defn db-exists?
+  "Given a DB spec that connects to a database besides `db-name`, return
+  a boolean indicating whether `db-name` exists."
   [admin-db-spec db-name]
   (-> (jdbc/query admin-db-spec ["SELECT 1 AS exists FROM pg_database WHERE datname = ?" db-name])
     first
@@ -74,8 +76,8 @@
 (defn create-db!
   "Given a DB spec that has a user with permission to create databases and that
   connects to a database that isn't `db-name`, the database's name, and the name
-  of the user that will own the database, creates the database `db-name` owned by
-  `db-owner`, with the DB's encoding set to UTF-8."
+  of the user that will own the database, creates the database `db-name` owned
+  by `db-owner`, with the DB's encoding set to UTF-8."
   [admin-db-spec db-name db-owner]
   (let [sql (format "CREATE DATABASE %s WITH OWNER %s ENCODING 'UTF8'"
                     (pg-escape-identifier db-name)
@@ -84,27 +86,28 @@
 
 (defn drop-db!
   "Given a DB spec that has a user with permission to drop the database
-  `db-name` and that connects to a database that isn't `db-name` and the safe
-  postgres identifier `db-name` (see the docstring for `pg-identifier?` for the
-  definition of 'safe'), drop the database named by `db-name`."
+  `db-name` and that connects to a database that isn't `db-name`, and the
+  database's name `db-name`, drop that database named by `db-name`."
   [admin-db-spec db-name]
   (let [sql (format "DROP DATABASE IF EXISTS %s" (pg-escape-identifier db-name))]
     (jdbc/execute! admin-db-spec [sql] {:transaction? false})
     nil))
 
 (defn user-exists?
-  [admin-db-spec user-name]
-  (-> (jdbc/query admin-db-spec ["SELECT 1 AS present FROM pg_roles WHERE rolname = ?" user-name])
+  "Given a DB spec that connects with a user besides `username`, return
+  a boolean indicating whether `username` exists."
+  [admin-db-spec username]
+  (-> (jdbc/query admin-db-spec ["SELECT 1 AS present FROM pg_roles WHERE rolname = ?" username])
     first
     :present
     (= 1)))
 
 (defn create-user!
-  "Given a DB spec that has a user with permission to create users and that
-  connects to a database that isn't `db-name`, the safe postgres identifier
-  `db-name` (see the docstring of `safe-pg-identifier?` for the definition of
-  'safe'), and the safe postgres identifier `db-owner`, create the
-  database `db-name` owned by `db-owner`, with the DB's encoding set to UTF-8."
+  "Given a DB spec that has a user with permission to create roles and isn't
+  `username`, create the user `username` with the given `password`. Accepts an
+  optional options map where the :superuser? option will make the created user
+  a superuser if the value is exactly `true` (not just truthy); note that only
+  superusers can create more superusers."
   [admin-db-spec username password]
   (let [sql (format "CREATE ROLE %s WITH LOGIN PASSWORD %s"
                     (pg-escape-identifier username)
@@ -113,6 +116,10 @@
     nil))
 
 (defn drop-user!
+  "Given a DB spec that connects with a user besides `username` and has
+  permisson to drop that user, remove the named user. Note that only superusers
+  can remove other superusers; other users can be removed by anyone with the
+  CREATEROLE permission."
   [admin-db-spec username]
   (let [sql (format "DROP ROLE IF EXISTS %s" (pg-escape-identifier username))]
     (jdbc/execute! admin-db-spec [sql])
