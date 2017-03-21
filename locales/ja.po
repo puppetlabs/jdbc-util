@@ -29,7 +29,7 @@ msgstr "データベースのステータスチェックは4秒間の後タイ�
 #: src/puppetlabs/jdbc_util/core.clj:158
 msgid "There are no '?'s in the given string"
 msgid_plural "There are not {0} '?'s in the given string"
-msgstr[0] "指定された文字列に{0} '?'はありません"
+msgstr[0] "指定された文字列に'?'が{0}つ存在しません"
 
 #: src/puppetlabs/jdbc_util/middleware.clj:17
 msgid ""
