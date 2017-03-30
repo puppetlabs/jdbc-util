@@ -18,100 +18,100 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/puppetlabs/jdbc_util/core.clj:44
+#: src/puppetlabs/jdbc_util/core.clj
 msgid "Status check of db failed with error:"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/core.clj:47
+#: src/puppetlabs/jdbc_util/core.clj
 msgid "Database status check timed out after 4 seconds."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/core.clj:158
+#: src/puppetlabs/jdbc_util/core.clj
 msgid "There are no '?'s in the given string"
 msgid_plural "There are not {0} '?'s in the given string"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/puppetlabs/jdbc_util/middleware.clj:17
+#: src/puppetlabs/jdbc_util/middleware.clj
 msgid ""
 "The operation could not be performed because of insufficient database "
 "permissions."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pglogical.clj:145
+#: src/puppetlabs/jdbc_util/pglogical.clj
 msgid "Database replication for {0} is currently down."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pglogical.clj:146
+#: src/puppetlabs/jdbc_util/pglogical.clj
 msgid "Database replication for {0} has been disabled."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pglogical.clj:147
+#: src/puppetlabs/jdbc_util/pglogical.clj
 msgid "Database replication for {0} is in an unknown state."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pglogical.clj:148
+#: src/puppetlabs/jdbc_util/pglogical.clj
 msgid "Database replication for {0} is inactive"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:37
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} is not a supported HikariCP option"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:122
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Starting database initialization"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:128
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Starting database migration"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:138
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - An error was encountered during database migration."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:140
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Finished database migration"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:142
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Starting post-migration init-fn"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:144
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Finished post-migration init-fn"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:147
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - An error was encountered during initialization."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:151
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Error while attempting to connect to database, retrying."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:160 src/puppetlabs/jdbc_util/pool.clj:163
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "Timeout waiting for the database pool to become ready."
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:183
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "Initialization resulted in an error: {0}"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:196
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Blocking execution until db init has finished"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:200 src/puppetlabs/jdbc_util/pool.clj:207
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Exception generated during init"
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:202
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid ""
 "{0} - Blocking execution until db init has finished with {1} millisecond "
 "timeout "
 msgstr ""
 
-#: src/puppetlabs/jdbc_util/pool.clj:218
+#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Cancelling db-init due to timeout"
 msgstr ""
