@@ -48,6 +48,15 @@
      (future-cancel f#)
      result#))
 
+(defn has-role?
+  "Returns true if the user has permission to act as the member of the role, and
+  false if not."
+  [db-spec user role]
+  (-> (jdbc/query db-spec ["SELECT pg_has_role(?, ?, 'MEMBER')" user role])
+    first
+    :pg_has_role
+    true?))
+
 (def db-status-timeout-secs 4)
 
 (defn db-up?
