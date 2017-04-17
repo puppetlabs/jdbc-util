@@ -79,6 +79,30 @@
   (is (false? (db-exists? test-db "no-database-here"))))
 
 (defn- rand-db-name [] (str "jdbc-util-test-db-" (ks/rand-str :alpha-lower 12)))
+(defn- rand-username [] (str "jdbc-util-test-user-" (ks/rand-str :alpha-lower 12)))
+
+(deftest has-role?-test
+  (testing "has-role?"
+    (let [penny (rand-username)
+          walker (rand-username) ; probably should be 'bono' huh
+          alice (rand-username)]
+      (create-user! test-db penny "hunter2")
+      (create-user! test-db walker "hunter2")
+
+      (testing "returns false when the user does not have the role"
+        (is (false? (has-role? test-db penny walker))))
+
+      (testing "returns true"
+        (testing "when the user does have the role"
+          (jdbc/execute! test-db [(str "GRANT \"" walker "\" TO \"" penny "\"")])
+          (is (true? (has-role? test-db penny walker))))
+
+        (testing "when the user and the role are the same and the user does exist"
+          (create-user! test-db alice "hunter2")
+          (is (true? (has-role? test-db alice alice)))))
+
+      (doseq [user [penny walker alice]]
+        (drop-user! test-db user)))))
 
 (deftest create-db!-test
   (let [test-with-names (fn [db user]
@@ -93,6 +117,22 @@
     (testing "create-db!"
       (testing "works in the simple case"
         (test-with-names (rand-db-name) (:user test-db)))
+
+      (testing "works when creating a database for another role"
+        (let [other-user (rand-username)
+              rand-db (rand-db-name)]
+          (create-user! test-db other-user "hunter2")
+          (is (false? (db-exists? test-db rand-db)))
+          (create-db! test-db rand-db other-user)
+          (is (true? (db-exists? test-db rand-db)))
+          (jdbc/execute! test-db
+                         (format (str "GRANT %s TO %s"
+                                      ";DROP DATABASE %s")
+                                 (pg-escape-identifier other-user)
+                                 (pg-escape-identifier (:user test-db))
+                                 (pg-escape-identifier rand-db))
+                         {:transaction? false})
+          (drop-user! test-db other-user)))
 
       (testing "handles DB & user names that try to break quoting"
         (let [bad-db-name "important\";"
@@ -138,8 +178,6 @@
 (deftest user-exists?-test
   (is (true? (user-exists? test-db (:user test-db))))
   (is (false? (user-exists? test-db "Waldo"))))
-
-(defn- rand-username [] (str "jdbc-util-test-user-" (ks/rand-str :alpha-lower 12)))
 
 (deftest create-user!-test
   (let [test-with-name (fn [user]

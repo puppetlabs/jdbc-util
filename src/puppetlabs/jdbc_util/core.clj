@@ -48,6 +48,15 @@
      (future-cancel f#)
      result#))
 
+(defn has-role?
+  "Returns true if the user has permission to act as the member of the role, and
+  false if not."
+  [db-spec user role]
+  (-> (jdbc/query db-spec ["SELECT pg_has_role(?, ?, 'MEMBER')" user role])
+    first
+    :pg_has_role
+    true?))
+
 (def db-status-timeout-secs 4)
 
 (defn db-up?
@@ -74,15 +83,31 @@
     (= 1)))
 
 (defn create-db!
-  "Given a DB spec that has a user with permission to create databases and that
-  connects to a database that isn't `db-name`, the database's name, and the name
-  of the user that will own the database, creates the database `db-name` owned
-  by `db-owner`, with the DB's encoding set to UTF-8."
+  "Given a DB spec, the database's name, and the name of the user that will own
+  the database, creates the database `db-name` owned by `db-owner`, with the
+  DB's encoding set to UTF-8. The DB spec should connect to a different database
+  than the one being created, and the user in the DB spec must have the CREATEDB
+  permission. If the `db-owner` differs from the user in the DB spec, then the
+  user in the DB spec must either be a member of the `db-owner` role, or have
+  the CREATEROLE permission, or be a superuser.
+
+  NB: this function is not thread-safe when multiple threads create databases
+  with the same `db-owner`, unless the :user specified in `admin-db-spec` is
+  `db-owner`, is otherwise a member of the `db-owner` role, or is a superuser."
   [admin-db-spec db-name db-owner]
-  (let [sql (format "CREATE DATABASE %s WITH OWNER %s ENCODING 'UTF8'"
-                    (pg-escape-identifier db-name)
-                    (pg-escape-identifier db-owner))]
-    (jdbc/execute! admin-db-spec [sql] {:transaction? false})))
+  (let [safe-db-name (pg-escape-identifier db-name)
+        safe-owner (pg-escape-identifier db-owner)
+        safe-user (pg-escape-identifier (:user admin-db-spec))
+        create-db-statement (format "CREATE DATABASE %s WITH OWNER %s ENCODING 'UTF8'"
+                                    safe-db-name safe-owner)
+        sql (if (has-role? admin-db-spec (:user admin-db-spec) db-owner)
+              create-db-statement
+              (format (str "GRANT %s TO %s"
+                           ";" create-db-statement
+                           ";REVOKE %s FROM %s")
+                      safe-owner safe-user
+                      safe-owner safe-user))]
+    (jdbc/execute! admin-db-spec sql {:transaction? false})))
 
 (defn drop-db!
   "Given a DB spec that has a user with permission to drop the database
