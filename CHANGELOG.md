@@ -1,3 +1,15 @@
+## 0.6.2
+  * Fix `create-db!` when the owner of the new database is a different user than
+    the one creating the database.
+  * Add `has-role?`.
+
+## 0.6.1
+  * Improved Japanese translation strings.
+
+## 0.6.0
+  * Add `db-exists?`, `create-db!`, and `drop-db!`.
+  * Add `user-exists?`, `create-user!`, and `drop-user!`.
+
 ## 0.5.0
   * Add lifetime protocol to pool interface to allow shutdown routines to wait
     for initialization to complete.
