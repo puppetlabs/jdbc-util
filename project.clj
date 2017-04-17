@@ -1,4 +1,4 @@
-(defproject puppetlabs/jdbc-util "0.6.2-SNAPSHOT"
+(defproject puppetlabs/jdbc-util "0.6.2"
   :description "Common JDBC helpers for use in Puppet Labs projects"
   :url "https://github.com/puppetlabs/jdbc-util"
 
