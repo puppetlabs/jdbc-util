@@ -118,6 +118,22 @@
       (testing "works in the simple case"
         (test-with-names (rand-db-name) (:user test-db)))
 
+      (testing "works when creating a database for another role"
+        (let [other-user (rand-username)
+              rand-db (rand-db-name)]
+          (create-user! test-db other-user "hunter2")
+          (is (false? (db-exists? test-db rand-db)))
+          (create-db! test-db rand-db other-user)
+          (is (true? (db-exists? test-db rand-db)))
+          (jdbc/execute! test-db
+                         (format (str "GRANT %s TO %s"
+                                      ";DROP DATABASE %s")
+                                 (pg-escape-identifier other-user)
+                                 (pg-escape-identifier (:user test-db))
+                                 (pg-escape-identifier rand-db))
+                         {:transaction? false})
+          (drop-user! test-db other-user)))
+
       (testing "handles DB & user names that try to break quoting"
         (let [bad-db-name "important\";"
               bad-user-name "Robert'\"); DROP TABLE STUDENTS;--"]
