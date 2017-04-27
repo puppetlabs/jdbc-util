@@ -223,10 +223,9 @@
   "Create a connection pool that loops trying to get a connection, and then runs
   init-fn (with the connection as argument) before returning any connections to
   the application. Accepts a timeout in ms that's used when deferencing the
-  future. This overrides the value of initialization-fail-fast and always sets
-  it to false. "
+  future. This overrides the value of initialization-fail-timeout to never timeout. "
   ([^HikariConfig config init-fn timeout]
    (connection-pool-with-delayed-init config nil init-fn timeout))
   ([^HikariConfig config migration-options init-fn timeout]
-   (.setInitializationFailFast config false)
+   (.setInitializationFailTimeout config -1)
    (wrap-with-delayed-init (HikariDataSource. config) migration-options init-fn timeout)))
