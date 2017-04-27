@@ -1,3 +1,9 @@
+## 1.0.0
+  * update HikariCP to version 2.6.1
+  * update kitchensink to 0.3.0
+  * update cheshire to 5.7.1
+  * update dev dependency slf4j related items to 1.7.22 to sync with Hikari
+
 ## 0.6.2
   * Fix `create-db!` when the owner of the new database is a different user than
     the one creating the database.
