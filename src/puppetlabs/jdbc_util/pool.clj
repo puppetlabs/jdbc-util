@@ -129,14 +129,14 @@
                           ;; If we're a replica then pglogical will be
                           ;; replicating our migrations for us, so we poll until
                           ;; the migrations have been replicated
-                          (if (= replication-mode :replica)
-                            (wait-for-migrations migration-db migration-dir)
-                            (try
-                              (migration/migrate migration-db migration-dir)
-                              (catch Exception e
-                                (reset! init-error e)
-                                (log/errorf e (trs "{0} - An error was encountered during database migration."
-                                                   (:subname migration-db "unknown"))))))
+                          (try
+                            (if (= replication-mode :replica)
+                              (wait-for-migrations migration-db migration-dir)
+                              (migration/migrate migration-db migration-dir))
+                            (catch Exception e
+                              (reset! init-error e)
+                              (log/errorf e (trs "{0} - An error was encountered during database migration."
+                                                 (:subname migration-db "unknown")))))
                           (log/debug (trs "{0} - Finished database migration" (.getPoolName datasource))))
                         (try
                           (log/debug (trs "{0} - Starting post-migration init-fn" (.getPoolName datasource)))
