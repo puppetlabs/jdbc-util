@@ -1,3 +1,6 @@
+## 1.0.2
+  * fix deprecation warnings associated with Hikari config option `setInitializationFailFast`
+  
 ## 1.0.1
   * fix an issue where exceptions during migration for a replica were not caught
   

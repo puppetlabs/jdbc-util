@@ -39,7 +39,7 @@
                                (:subname db-spec)))
              (.setUsername (:user db-spec))
              (.setPassword (:password db-spec))
-             (.setInitializationFailFast false))]
+             (.setInitializationFailTimeout -1))]
     {:datasource ds}))
 
 (defmacro with-timeout [timeout-s default & body]
