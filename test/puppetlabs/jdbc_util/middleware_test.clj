@@ -1,11 +1,11 @@
 (ns puppetlabs.jdbc-util.middleware-test
-  (:import [org.postgresql.util PSQLException PSQLState])
+  (:import [org.postgresql.util PSQLException ServerErrorMessage])
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [puppetlabs.jdbc-util.middleware :refer :all]))
 
 (deftest pg-permission-error-middleware-test
-  (let [throwing-handler (fn [_] (throw (PSQLException. "SomeMessage" (PSQLState. "42501"))))
+  (let [throwing-handler (fn [_] (throw (PSQLException. (ServerErrorMessage. "C42501"))))
         wrapped (handle-postgres-permission-errors throwing-handler)
         response (wrapped nil)
         response-body (-> response :body (json/parse-string true))]

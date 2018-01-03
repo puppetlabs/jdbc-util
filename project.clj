@@ -9,17 +9,17 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jdbc "0.6.2-alpha3"]
                  [org.clojure/test.check "0.9.0"]
-                 [org.postgresql/postgresql "9.4.1208.jre7"]
+                 [org.postgresql/postgresql "42.1.4"]
                  [migratus "0.8.30"]
-                 [com.zaxxer/HikariCP "2.6.1"]
+                 [com.zaxxer/HikariCP "2.7.4"]
                  [puppetlabs/kitchensink "2.3.0"]
                  [puppetlabs/i18n "0.8.0"]
                  [io.dropwizard.metrics/metrics-core "3.1.2"]
                  [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]
                  [cheshire "5.7.1"]]
 
-  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.22"]
-                                  [org.slf4j/slf4j-log4j12 "1.7.22"]
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.25"]
+                                  [org.slf4j/slf4j-log4j12 "1.7.25"]
                                   [log4j/log4j "1.2.17"]]}}
 
   :plugins [[lein-release "1.0.5"]
