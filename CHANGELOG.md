@@ -1,9 +1,13 @@
+## 1.0.3
+  * update HikariCP to version 2.7.4
+  * update postgresql driver to 42.1.4
+
 ## 1.0.2
   * fix deprecation warning on 'initializationFailFast' in Hikari configuration
-  
+
 ## 1.0.1
   * fix an issue where exceptions during migration for a replica were not caught
-  
+
 ## 1.0.0
   * update HikariCP to version 2.6.1
   * update kitchensink to 0.3.0
