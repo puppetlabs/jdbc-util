@@ -1,3 +1,9 @@
+## 1.1.0
+  * Update libraries for Java 9 compatibility
+  * update migratus to version 1.0.3
+  * update postgresql driver to 42.2.0
+  * update java.jdbc to 0.7.5
+
 ## 1.0.3
   * update HikariCP to version 2.7.4
   * update postgresql driver to 42.1.4
