@@ -246,7 +246,7 @@
             (let [migrate-with (deref !migrate-with 5000 nil)]
              (is (= migration-db-spec migrate-with)))))))))
 
-(deftest migration-blocks-initilization
+(deftest migration-blocks-initialization
   (let [config (-> core-test/test-db
                    (assoc :pool-name "AppPool")
                    pool/spec->hikari-options

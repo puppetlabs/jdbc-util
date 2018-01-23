@@ -1,18 +1,18 @@
 language: clojure
-lein: lein2
 jdk:
+  - oraclejdk9
   - oraclejdk8
-  - oraclejdk7
-  - openjdk7
-script: lein2 test :all
+script: lein test :all
+sudo: false
 before_script:
-  - psql -c 'create database jdbc_util_test;' -U postgres
+  - psql -c "create user jdbc_util_test with createdb createrole password 'foobar'" -U postgres
+  - psql -c 'create database jdbc_util_test owner jdbc_util_test' -U postgres
 env:
   global:
     - JDBCUTIL_DBNAME=//127.0.0.1:5432/jdbc_util_test
-    - JDBCUTIL_DBUSER=postgres
-    - JDBCUTIL_DBPASS=
+    - JDBCUTIL_DBUSER=jdbc_util_test
+    - JDBCUTIL_DBPASS=foobar
 addons:
-  postgresql: "9.3"
+  postgresql: "9.4"
 notifications:
   email: false
