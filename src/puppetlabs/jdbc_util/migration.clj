@@ -62,6 +62,7 @@
   [db migration-dir]
   (let [config {:store :database
                 :migration-dir migration-dir
-                :db db}]
-    (migratus/uncompleted-migrations (doto (mproto/make-store config)
-                                       (mproto/connect)))))
+                :db db}
+        store (doto (mproto/make-store config)
+                (mproto/connect))]
+    (migratus/uncompleted-migrations config store)))
