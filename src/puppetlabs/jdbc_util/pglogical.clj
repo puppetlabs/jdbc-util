@@ -1,6 +1,7 @@
 (ns puppetlabs.jdbc-util.pglogical
-  (:import [org.postgresql.util PSQLException PSQLState])
+  (:import [org.postgresql.util PSQLException])
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [puppetlabs.i18n.core :refer [tru]]
             [puppetlabs.jdbc-util.core :refer [has-extension? with-timeout db-status-timeout-secs]]))
 
@@ -18,13 +19,16 @@
   pglogical.replicate_ddl_command, escaping quotes and wrapping the statement so
   it won't return anything."
   [sql schema]
-  (str "do 'begin perform "
-       (unsafe-escape-sql-quotes
-        (str "pglogical.replicate_ddl_command('"
-             "set local search_path to " schema "; "
-             (unsafe-escape-sql-quotes sql)
-             "');"))
-       " end;';"))
+  (let [effective-sql (if (sequential? sql)
+                        (str (str/join "; " sql) ";")
+                        sql)]
+    (str "do 'begin perform "
+         (unsafe-escape-sql-quotes
+          (str "pglogical.replicate_ddl_command('"
+               "set local search_path to " schema "; "
+               (unsafe-escape-sql-quotes effective-sql)
+               "');"))
+         " end;';")))
 
 (defn update-pglogical-replication-set
   "Tries to update the default pglogical replication set to replicate all tables

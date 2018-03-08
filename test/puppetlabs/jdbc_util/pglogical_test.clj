@@ -7,7 +7,16 @@
               " pglogical.replicate_ddl_command(''set local search_path to public;"
               " create table test(a integer);''"
               "); end;';")
-         (wrap-ddl-for-pglogical "create table test(a integer);" "public"))))
+         (wrap-ddl-for-pglogical "create table test(a integer);" "public")))
+
+  (is (= (str "do 'begin perform"
+              " pglogical.replicate_ddl_command(''set local search_path to public;"
+              " ALTER TABLE schema_migrations ADD COLUMN description varchar(1024);"
+              " ALTER TABLE schema_migrations ADD COLUMN applied timestamp;''"
+              "); end;';")
+         (wrap-ddl-for-pglogical ["ALTER TABLE schema_migrations ADD COLUMN description varchar(1024)"
+                                  "ALTER TABLE schema_migrations ADD COLUMN applied timestamp"] "public"))))
+
 
 (deftest consolidate-replica-status-test
   (testing "when 2 subscriptions are running, returns :running"
