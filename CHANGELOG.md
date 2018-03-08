@@ -1,3 +1,6 @@
+## 1.1.1
+  * fix issue with pg-logical wrappers and multiple statements issued by migratus
+
 ## 1.1.0
   * Update libraries for Java 9 compatibility
   * update migratus to version 1.0.3
