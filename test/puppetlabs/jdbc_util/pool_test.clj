@@ -248,7 +248,7 @@
                        (assoc :pool-name "AppPool")
                        pool/spec->hikari-options
                        pool/options->hikari-config)
-        migration-db-spec (assoc core-test/test-db :user "migrator")]
+        migration-db-spec core-test/test-db]
     (testing "the init function is called with the application datasource"
       (let [!init-with (promise)
             init-fn (fn [init-with]
