@@ -104,17 +104,18 @@ this project.
 
 ## Running tests
 You'll need PostgreSQL installed (9.4 is the mainly-used version for us right
-now), and set up a "jdbc_util_test" DB and user with password "foobar" that has
-the permission to create databases and users.
+now), and set up a "jdbc_util_test" DB and users "jdbc_util_test" and "migrator"
+with password "foobar" that have the permission to create databases and users.
 
-To give the "jdbc_util_test" user permission to create databases, open up a psql
+To give the "jdbc_util_test" and "migrator" users permission to create databases, open up a psql
 session and then run:
 ```sql
 ALTER ROLE jdbc_util_test CREATEDB CREATEROLE;
+ALTER ROLE migrator CREATEDB CREATEROLE;
 ```
 
 ## License
 
-Copyright © 2016 Puppet, Inc.
+Copyright © 2018 Puppet, Inc.
 
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)

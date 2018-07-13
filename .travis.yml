@@ -6,6 +6,7 @@ script: lein test :all
 sudo: false
 before_script:
   - psql -c "create user jdbc_util_test with createdb createrole password 'foobar'" -U postgres
+  - psql -c "create user migrator with createdb createrole password 'foobar'" -U postgres
   - psql -c 'create database jdbc_util_test owner jdbc_util_test' -U postgres
 env:
   global:

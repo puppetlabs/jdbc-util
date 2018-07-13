@@ -1,3 +1,9 @@
+## 1.2.0
+  * alter pool initialization behavior to retry transients, but fail on everything else.
+  * alter pool getConnection to throw a RuntimeException when trying to use the pool with an initialization failure
+  * alter pool behavior to run migrations when replication-mode is left out of the migration options
+  * multiple test flakeyness issues resolved
+
 ## 1.1.1
   * fix issue with pg-logical wrappers and multiple statements issued by migratus
 
