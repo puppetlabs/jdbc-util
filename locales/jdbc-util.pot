@@ -1,12 +1,13 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR Puppet <docs@puppet.com>
-# This file is distributed under the same license as the puppetlabs.jdbc_util package.
+# This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.jdbc_util \n"
+"X-Git-Ref: a291f246fdbd46dee025a3ada5d20de7385e7d17\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -67,7 +68,7 @@ msgid "{0} - Starting database migration"
 msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
-msgid "{0} - An error was encountered during database migration."
+msgid "{0} - Starting post-migration init-fn"
 msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
@@ -75,19 +76,15 @@ msgid "{0} - Finished database migration"
 msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
-msgid "{0} - Starting post-migration init-fn"
-msgstr ""
-
-#: src/puppetlabs/jdbc_util/pool.clj
-msgid "{0} - Finished post-migration init-fn"
-msgstr ""
-
-#: src/puppetlabs/jdbc_util/pool.clj
-msgid "{0} - An error was encountered during initialization."
-msgstr ""
-
-#: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Error while attempting to connect to database, retrying."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj
+msgid "{0} - An error was encountered during database migration."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj
+msgid "Unrecoverable error occurred during database initialization."
 msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
