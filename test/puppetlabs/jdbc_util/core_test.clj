@@ -238,7 +238,7 @@
       (is (db-up? pooled-db))
 
       (testing "pooled connections retry, rather than failing immediately"
-        (let [bad-db (assoc test-db :subname "//example.com/xyz")
+        (let [bad-db (assoc test-db :subname "//example.puppetlabs/xyz")
               bad-pool (-> (connection-pool bad-db)
                          (update-in [:datasource] #(doto % (.setConnectionTimeout 5000))))
               start (System/currentTimeMillis)
@@ -246,6 +246,10 @@
                           (catch java.sql.SQLTransientConnectionException _
                             ::timeout))
               end (System/currentTimeMillis)]
+          ;; if we don't explicitly close this, it will keep trying.
+          ;; this test generates "connection timeout" messages, and that is normal
+          (.close (:datasource bad-pool))
+
           (is (<= 5000 (- end start)))
           (is (= ::timeout result)))))))
 

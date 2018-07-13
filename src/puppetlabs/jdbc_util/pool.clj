@@ -6,7 +6,7 @@
   (:import com.codahale.metrics.health.HealthCheckRegistry
            [com.zaxxer.hikari HikariConfig HikariDataSource]
            java.io.Closeable
-           [java.sql SQLTransientConnectionException SQLTransientException]
+           [java.sql SQLTransientConnectionException SQLTransientException SQLException]
            javax.sql.DataSource
            (java.util.concurrent ExecutionException)))
 
@@ -118,51 +118,51 @@
    (let [init-error (atom nil)
          pool-future
          (future
-           (loop []
-             (log/debug (trs "{0} - Starting database initialization" (.getPoolName datasource)))
+          (log/debug (trs "{0} - Starting database initialization" (.getPoolName datasource)))
+          (loop []
              (if-let [result
                       (try
                         ;; Try to get a connection to make sure the db is ready
                         (.close (.getConnection datasource))
-                        (when-let [{:keys [migration-db migration-dir replication-mode]} migration-opts]
+                        (when-let [{:keys [migration-db migration-dir]} migration-opts]
                           (log/debug (trs "{0} - Starting database migration" (.getPoolName datasource)))
                           ;; If we're a replica then pglogical will be
                           ;; replicating our migrations for us, so we poll until
                           ;; the migrations have been replicated
-                          (try
-                            (if (= replication-mode :replica)
-                              (wait-for-migrations migration-db migration-dir)
-                              (migration/migrate migration-db migration-dir))
-                            (catch Exception e
-                              (reset! init-error e)
-                              (log/errorf e (trs "{0} - An error was encountered during database migration."
-                                                 (:subname migration-db "unknown")))))
-                          (log/debug (trs "{0} - Finished database migration" (.getPoolName datasource))))
-                        (try
-                          (log/debug (trs "{0} - Starting post-migration init-fn" (.getPoolName datasource)))
-                          (init-fn {:datasource datasource})
-                          (log/debug (trs "{0} - Finished post-migration init-fn" (.getPoolName datasource)))
-                          (catch Exception e
-                            (reset! init-error e)
-                            (log/errorf e (trs "{0} - An error was encountered during initialization."
-                                               (.getPoolName datasource)))))
+                          (if (= (:replication-mode migration-opts) :replica)
+                            (wait-for-migrations migration-db migration-dir)
+                            (migration/migrate migration-db migration-dir)))
+
+                        (log/debug (trs "{0} - Starting post-migration init-fn" (.getPoolName datasource)))
+                        (init-fn {:datasource datasource})
+                        (log/debug (trs "{0} - Finished database migration" (.getPoolName datasource)))
                         datasource
                         (catch SQLTransientException e
-                          (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying."
-                                            (.getPoolName datasource)))
-                          nil))]
+                               (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying.")
+                                   (.getPoolName datasource))
+                               nil)
+                        (catch Exception e
+                          (reset! init-error e)
+                          (log/errorf e (trs "{0} - An error was encountered during database migration."
+                                             (.getPoolName datasource)))
+                          ;; return the datasource so we know we are done.
+                          datasource))]
                result
                (recur))))]
      (reify
        DataSource
        (getConnection [this]
-         (.getConnection (or (deref pool-future timeout nil)
-                             (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))))
+         (if (deref init-error)
+           (throw (RuntimeException. (tru "Unrecoverable error occurred during database initialization.")))
+           (.getConnection (or (deref pool-future timeout nil)
+                               (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready.")))))))
        (getConnection [this username password]
-         (.getConnection (or (deref pool-future timeout nil)
-                             (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))
-                         username
-                         password))
+         (if (deref init-error)
+           (throw (RuntimeException. (tru "Unrecoverable error occurred during database initialization.")))
+           (.getConnection (or (deref pool-future timeout nil)
+                               (throw (SQLTransientConnectionException. (tru "Timeout waiting for the database pool to become ready."))))
+                           username
+                           password)))
 
        Closeable
        (close [this]
