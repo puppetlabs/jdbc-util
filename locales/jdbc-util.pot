@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.jdbc_util \n"
-"X-Git-Ref: a291f246fdbd46dee025a3ada5d20de7385e7d17\n"
+"X-Git-Ref: 63dcbb24d5d07311837fcc284b66420922215b34\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -37,6 +37,30 @@ msgstr[1] ""
 msgid ""
 "The operation could not be performed because of insufficient database "
 "permissions."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/migration.clj
+msgid "Starting migrations"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/migration.clj
+msgid "Up {0}"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/migration.clj
+msgid "Failure during migration {0}"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/migration.clj
+msgid "Failed running migration {0}. Stopping."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/migration.clj
+msgid "Migrations interrupted because of cancellation."
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/migration.clj
+msgid "Ending migrations"
 msgstr ""
 
 #: src/puppetlabs/jdbc_util/pglogical.clj
