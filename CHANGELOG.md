@@ -1,3 +1,7 @@
+## 1.2.1
+  * alter migration funciton to observe interruptibility of the thread so that migrations can be interrupted
+  * cleanup connection used in `uncompleted-migrations` function to prevent leak.
+
 ## 1.2.0
   * alter pool initialization behavior to retry transients, but fail on everything else.
   * alter pool getConnection to throw a RuntimeException when trying to use the pool with an initialization failure
