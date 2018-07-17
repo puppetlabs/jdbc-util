@@ -7,10 +7,10 @@
 
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/java.jdbc "0.7.5"]
+                 [org.clojure/java.jdbc "0.7.7"]
                  [org.clojure/test.check "0.9.0"]
                  [org.postgresql/postgresql "42.2.0"]
-                 [migratus "1.0.3" :exclusions [org.clojure/clojure]]
+                 [migratus "1.0.8" :exclusions [org.clojure/clojure]]
                  [com.zaxxer/HikariCP "2.7.4"]
                  [puppetlabs/kitchensink "2.3.0"]
                  [puppetlabs/i18n "0.8.0"]

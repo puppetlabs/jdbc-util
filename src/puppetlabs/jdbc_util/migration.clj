@@ -31,30 +31,17 @@
                 :db db
                 :modify-sql-fn (if have-pglogical
                                  #(pglogical/wrap-ddl-for-pglogical % pg-schema)
-                                 identity)}
-        store (mproto/make-store config)]
+                                 identity)}]
     (try
-      (log/info (i18n/trs "Starting migrations"))
-      (mproto/connect store)
-      (let [uncompleted-migrations (sort-by mproto/id (migratus/uncompleted-migrations config store))]
-        (doseq [migration uncompleted-migrations]
-          (let [migration-name (migratus/migration-name migration)
-                _ (log/info (i18n/trs "Up {0}" migration-name))
-                result (mproto/migrate-up store migration)]
-            (when-not (= :success result)
-              (log/error (i18n/trs "Failure during migration {0}" migration-name))
-              (throw (RuntimeException. ^String (i18n/trs "Failed running migration {0}. Stopping." migration-name))))
-            (if (Thread/interrupted)
-              (throw (InterruptedException. (i18n/trs "Migrations interrupted because of cancellation.")))))))
+      (when-not (nil? (migratus/migrate config))
+        (log/error (i18n/trs "Failure during migration"))
+        (throw (RuntimeException. ^String (i18n/trs "Failed running migration. Stopping."))))
       (when have-pglogical
         (pglogical/add-status-alias db pg-schema)
         (pglogical/update-pglogical-replication-set db pg-schema))
       (catch BatchUpdateException e
         (let [root-e (last (seq e))]
-          (throw root-e)))
-      (finally
-        (log/info (i18n/trs "Ending migrations"))
-        (mproto/disconnect store)))))
+          (throw root-e))))))
 
 (defn migrate-until-just-before
   "Like 'migrate' but only migrates up to the given
