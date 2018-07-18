@@ -1,5 +1,9 @@
+## 1.2.2
+  * update to migratus 1.0.8
+  * change migration function to use interruptibility built into migratus.
+
 ## 1.2.1
-  * alter migration funciton to observe interruptibility of the thread so that migrations can be interrupted
+  * alter migration function to observe interruptibility of the thread so that migrations can be interrupted
   * cleanup connection used in `uncompleted-migrations` function to prevent leak.
 
 ## 1.2.0
