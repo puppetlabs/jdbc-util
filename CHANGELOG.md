@@ -1,3 +1,7 @@
+## 1.2.3
+  * wait until migrations have reached a safe point before closing the pool.  If the pool is closed during a migration step,
+  the migration is marked as reserved and won't be able to continue.
+
 ## 1.2.2
   * update to migratus 1.0.8
   * change migration function to use interruptibility built into migratus.
