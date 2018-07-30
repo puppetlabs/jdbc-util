@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.jdbc_util \n"
-"X-Git-Ref: d4ccc76ba1de695473f07f2d02a5b12e3fb077dc\n"
+"X-Git-Ref: ab12e02697cb1daf76a2531423d8e15f0de9527d\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -119,4 +119,8 @@ msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Cancelling db-init due to timeout"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj
+msgid "{0} - Done waiting for init safe exit"
 msgstr ""
