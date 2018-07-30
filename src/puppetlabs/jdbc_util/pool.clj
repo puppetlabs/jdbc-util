@@ -116,6 +116,7 @@
    (when-not (.getHealthCheckRegistry datasource)
      (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
    (let [init-error (atom nil)
+         init-exited-safely (promise)
          pool-future
          (future
           (log/debug (trs "{0} - Starting database initialization" (.getPoolName datasource)))
@@ -147,7 +148,10 @@
                                              (.getPoolName datasource)))
                           ;; return the datasource so we know we are done.
                           datasource))]
-               result
+               (do
+                 (deliver init-exited-safely true)
+                 result)
+
                (recur))))]
      (reify
        DataSource
@@ -216,7 +220,11 @@
        (close-after-ready [this timeout-ms]
          (when-not (block-until-ready this timeout-ms)
            (log/warn (trs "{0} - Cancelling db-init due to timeout" (.getPoolName datasource)))
-           (cancel-init this))
+           (cancel-init this)
+           ; since we have cancelled the init, we need to specifically wait until the migrations have exited
+           ; safely before closing the connection
+           (deref init-exited-safely timeout-ms :timeout)
+           (log/info (trs "{0} - Done waiting for init safe exit" (.getPoolName datasource))))
          (.close datasource))))))
 
 (defn connection-pool-with-delayed-init
