@@ -3,7 +3,8 @@
            [java.util.regex Pattern]
            [org.postgresql.util PGobject PSQLException]
            [org.postgresql.core Utils])
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :refer [trs trsn]]
@@ -319,3 +320,29 @@
                                  "    THEN setval('" sequence-name "', " select-max-in-column ")"
                                  "  END")])))
     (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))
+    
+(defn obj->jsonb
+  "Builds a JSONB object from a given object. All insertions into JSONB
+  columns must be wrapped with this function."
+  [value]
+  (doto (PGobject.)
+    (.setType "jsonb")
+    (.setValue (json/generate-string value))))
+    
+(defn parse-jsonb-object
+  "Parses the given database value as JSON if it's a JSONB PGObject. Returns
+  the value unmodified for other objects."
+  [pgobject]
+  (if (instance? PGobject pgobject)
+    (if (= (.getType pgobject) "jsonb")
+      (json/parse-string (.getValue pgobject) true)
+      (.getValue pgobject))
+    pgobject))
+    
+(defn jsonb-converter
+  "Returns a function that parses JSON objects from the given JSONB fields.
+  The returned function is suitable for use as a :row-fn argument to a JDBC
+  query."
+  [& fields]
+  (fn [row]
+      (reduce #(update %1 %2 parse-jsonb-object) row fields)))    
