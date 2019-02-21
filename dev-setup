@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -ufo pipefail
+
+psql -X -f dev-setup.sql \
+     --echo-all \
+     --set ON_ERROR_STOP=on\
+     -U postgres
+
+if [ $? != 0 ]; then
+    echo
+    echo 'Encountered an error while trying to run dev-setup.sql'
+    exit 1
+fi

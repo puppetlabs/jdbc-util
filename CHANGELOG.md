@@ -1,3 +1,6 @@
+## 1.2.4 
+  * utility methods for transforming data to PGObject jsonb format and reversing the transformation
+
 ## 1.2.3
   * wait until migrations have reached a safe point before closing the pool.  If the pool is closed during a migration step,
   the migration is marked as reserved and won't be able to continue.
