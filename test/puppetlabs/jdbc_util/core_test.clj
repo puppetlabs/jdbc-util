@@ -1,6 +1,6 @@
 (ns puppetlabs.jdbc-util.core-test
   (:import [java.util UUID]
-           [org.postgresql.util PSQLException PSQLState])
+           [org.postgresql.util PSQLException PSQLState PGobject])
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
@@ -26,6 +26,28 @@
                         title TEXT PRIMARY KEY,
                         author TEXT REFERENCES authors (name))"])
   (jdbc/execute! db ["CREATE TABLE weird_junk ( id UUID PRIMARY KEY )"])
+  (jdbc/execute! db ["CREATE TABLE jsonb_testing (
+                        name TEXT PRIMARY KEY,
+                        text_stuff TEXT,
+                        json_stuff JSON,
+                        jsonb_stuff JSONB)"])
+  (jdbc/insert-multi! db :jsonb_testing 
+                      [{:name "a" 
+                        :text_stuff "text" 
+                        :json_stuff (doto (PGobject.)
+                                      (.setType "json")
+                                      (.setValue (json/generate-string {:should "return encoded"})))
+                        :jsonb_stuff (doto (PGobject.)
+                                      (.setType "jsonb")
+                                      (.setValue (json/generate-string {:should "return parsed"})))}
+                       {:name "b" 
+                        :text_stuff "text" 
+                        :json_stuff (doto (PGobject.)
+                                      (.setType "json")
+                                      (.setValue (json/generate-string {:should "return encoded"})))
+                        :jsonb_stuff (doto (PGobject.)
+                                      (.setType "jsonb")
+                                      (.setValue (json/generate-string {:should "return parsed"})))}])
   (jdbc/insert-multi! db :authors
                       [{:name "kafka"  :favorite_color "black"}
                        {:name "borges" :favorite_color "purple"}
@@ -448,3 +470,56 @@
     (testing "when there is no associated sequence, reconcile-sequence-for-column! throws an exception"
       (is (thrown-with-msg? Exception #"No sequence found"
                             (reconcile-sequence-for-column! test-db "authors" "name"))))))
+                            
+(deftest obj->jsonb-test
+  (testing "objects are converted to jsonb format successfully"
+    (let [obj {:foo "bar" :baz "qux"}
+          string "foobar"
+          num 1234
+          jsonb-string (obj->jsonb string)
+          jsonb-obj (obj->jsonb obj)
+          jsonb-num (obj->jsonb num)]
+      (is (= (type jsonb-string) org.postgresql.util.PGobject))
+      (is (= (type jsonb-obj) org.postgresql.util.PGobject))
+      (is (= (type jsonb-num) org.postgresql.util.PGobject)))))
+
+(deftest parse-jsonb-object-test
+  (testing "if the resource is not a PGobject, the original object is returned"
+    (let [obj (parse-jsonb-object {:foo "bar"})
+          num (parse-jsonb-object 1234)
+          string (parse-jsonb-object "hello")]
+      (is (map? obj))
+      (is (integer? num))
+      (is (string? string))))
+  (testing "all PGobject values are returned, and jsonb values are returned parsed"
+    (let [pgtext (doto (PGobject.)
+                    (.setType "text")
+                    (.setValue "hello"))
+          text-result (parse-jsonb-object pgtext)
+          pgjson (doto (PGobject.)
+                    (.setType "json")
+                    (.setValue (json/generate-string {:foo "bar"})))
+          json-result (parse-jsonb-object pgjson)
+          pgjsonb (doto (PGobject.)
+                    (.setType "jsonb")
+                    (.setValue (json/generate-string {:yee "haw"})))
+          jsonb-result (parse-jsonb-object pgjsonb)]
+      (is (string? text-result))
+      (is (= text-result "hello"))
+      (is (string? json-result))
+      (is (= json-result "{\"foo\":\"bar\"}"))
+      (is (map? jsonb-result))
+      (is (= jsonb-result {:yee "haw"})))))
+      
+(deftest jsonb-converter-test
+  (testing "the converter function only returns parsed jsonb columns from the db"
+    (let [query (str "select * from jsonb_testing where text_stuff = 'text'")
+          convert-all-columns {:row-fn (jsonb-converter :name :text_stuff :json_stuff :jsonb_stuff)} 
+          results (jdbc/query test-db [query] convert-all-columns)]
+      (doseq [result results]
+        (is (string? (:name result)))
+        (is (string? (:text_stuff result)))
+        (is (string? (:json_stuff result)))
+        (is (= "{\"should\":\"return encoded\"}" (:json_stuff result)))
+        (is (map? (:jsonb_stuff result)))
+        (is (= {:should "return parsed"} (:jsonb_stuff result)))))))
