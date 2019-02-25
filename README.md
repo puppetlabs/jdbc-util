@@ -103,15 +103,23 @@ addressed on a best-effort basis. Puppet Inc. does not guarantee support for
 this project.
 
 ## Running tests
-You'll need PostgreSQL installed (9.4 is the mainly-used version for us right
-now), and set up a "jdbc_util_test" DB and user "jdbc_util_test" with password "foobar"
-that has the permission to create databases and users.
+You'll need PostgreSQL installed (9.6 is the mainly-used version for us right
+now). To manually create the needed postgres resources for running tests, set up 
+a "jdbc_util_test" DB and user "jdbc_util_test" with password "foobar" and superuser 
+permissions. 
 
 To give the "jdbc_util_test" and "migrator" users permission to create databases, open up a psql
 session and then run:
 ```sql
-ALTER ROLE jdbc_util_test CREATEDB CREATEROLE;
-```
+ALTER ROLE jdbc_util_test CREATEDB CREATEROLE; 
+
+Alternately, if you have a local postgres user configured super user read and write 
+capability, you can run the setup script at the root of this application. You will 
+need execute permissions for your local user on the dev-setup file in the root 
+directory of the application. Executing that file will do some local db cleanup 
+and create the needed test databases with users and permissions.
+
+Run ```./dev-setup```
 
 ## License
 
