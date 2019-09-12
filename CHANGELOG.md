@@ -1,3 +1,6 @@
+## 1.2.5
+  * alter the `uncompleted-migrations` function to not have any side-effects.  Prior to this change, the routine would create the migraiton table if it didn't exist. 
+
 ## 1.2.4 
   * utility methods for transforming data to PGObject jsonb format and reversing the transformation
 
