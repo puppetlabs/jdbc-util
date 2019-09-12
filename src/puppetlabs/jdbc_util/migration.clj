@@ -2,8 +2,11 @@
   (:import java.sql.BatchUpdateException)
   (:require [clojure.tools.logging :as log]
             [migratus.core :as migratus]
+            [migratus.database :as mdb]
+            [migratus.migrations :as mig]
             [migratus.protocols :as mproto]
             [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.pglogical :as pglogical]))
 
 
@@ -69,10 +72,13 @@
   (let [config {:store :database
                 :migration-dir migration-dir
                 :db db}
-        store (mproto/make-store config)]
+        store (mproto/make-store config)
+        migration-db-name (mdb/migration-table-name config)]
 
-    (try
-      (mproto/connect store)
-      (migratus/uncompleted-migrations config store)
-      (finally
-        (mproto/disconnect store)))))
+    (if (core/table-exists? db migration-db-name)
+      (try
+        (mproto/connect store)
+        (migratus/uncompleted-migrations config store)
+        (finally
+          (mproto/disconnect store)))
+      (mig/list-migrations config))))

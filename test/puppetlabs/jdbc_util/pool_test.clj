@@ -1,6 +1,7 @@
 (ns puppetlabs.jdbc-util.pool-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [migratus.database :refer [default-migrations-table]]
             [puppetlabs.i18n.core :refer [with-user-locale string-as-locale]]
             [puppetlabs.jdbc-util.core :as core]
             [puppetlabs.jdbc-util.core-test :as core-test]
@@ -301,6 +302,54 @@
         (pool/block-until-ready wrapped wait-for-migrations-ms)
 
         (is (= 0 (num-migrations-left)))
+        (is (= :completed @init-status))))))
+
+(deftest waiting-on-migration-has-no-side-effects
+  (let [
+        config (-> core-test/test-db
+                   (assoc :pool-name "AppPool")
+                   pool/spec->hikari-options
+                   pool/options->hikari-config)
+        ;; note, this function has side-effects and creates the migration table
+        num-migrations-left (fn []
+                              (count (migration/uncompleted-migrations core-test/test-db
+                                                                       "test-migrations")))
+        init-status (atom :waiting)
+        wait-for-migrations-ms 3500
+        migration-table-exists? (fn [] (->
+                                        (jdbc/query core-test/test-db ["SELECT 1 AS exists FROM pg_class WHERE relname = ?" default-migrations-table])
+                                        first
+                                        :exists
+                                        (= 1)))]
+    (core/drop-public-tables! core-test/test-db)
+    ;table should not exist here
+    (testing "waiting on migrations does not create database"
+      ;; start the replica pool and wait for the migrations to complete
+      (with-open [wrapped (pool/connection-pool-with-delayed-init
+                           config
+                           {:migration-db     core-test/test-db
+                            :migration-dir    "test-migrations"
+                            :replication-mode :replica}
+                           (fn [_] (reset! init-status :completed))
+                           5000)]
+        ;; sleep for a bit to make sure the migration routine is actually being run
+        (Thread/sleep 500)
+        ;; the default-migrations-table should not exist, but we should have tested for it.
+        (is (= false (migration-table-exists?)))
+        ;; manually invoke the check routine to demonstrate
+        (is (= 1 (num-migrations-left)))
+        ;; the migrations table still shouldn't exist
+        (is (= false (migration-table-exists?)))
+
+        ;; force the migrations to complete
+        (migration/migrate core-test/test-db "test-migrations")
+        ;; wait for the pool init to finish
+        (pool/block-until-ready wrapped wait-for-migrations-ms)
+        ;; there shouldn't be any migrations left
+        (is (= 0 (num-migrations-left)))
+        ;; the table should now be present
+        (is (migration-table-exists?))
+        ;; the pool init should have completed properly
         (is (= :completed @init-status))))))
 
 (deftest connection-pool-fails-slow

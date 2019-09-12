@@ -83,6 +83,14 @@
     :exists
     (= 1)))
 
+(defn table-exists?
+  "Given a DB spec to connect to a given db, check to see if that database table exists in the DB."
+  [db-spec table-name]
+  (-> (jdbc/query db-spec ["SELECT 1 AS exists FROM pg_class WHERE relkind = 'r' AND relname = ?" table-name])
+      first
+      :exists
+      (= 1)))
+
 (defn create-db!
   "Given a DB spec, the database's name, and the name of the user that will own
   the database, creates the database `db-name` owned by `db-owner`, with the
@@ -320,7 +328,7 @@
                                  "    THEN setval('" sequence-name "', " select-max-in-column ")"
                                  "  END")])))
     (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))
-    
+
 (defn obj->jsonb
   "Builds a JSONB object from a given object. All insertions into JSONB
   columns must be wrapped with this function."
@@ -328,7 +336,7 @@
   (doto (PGobject.)
     (.setType "jsonb")
     (.setValue (json/generate-string value))))
-    
+
 (defn parse-jsonb-object
   "Parses the given database value as JSON if it's a JSONB PGObject. Returns
   the value unmodified for other objects."
@@ -338,11 +346,11 @@
       (json/parse-string (.getValue pgobject) true)
       (.getValue pgobject))
     pgobject))
-    
+
 (defn jsonb-converter
   "Returns a function that parses JSON objects from the given JSONB fields.
   The returned function is suitable for use as a :row-fn argument to a JDBC
   query."
   [& fields]
   (fn [row]
-      (reduce #(update %1 %2 parse-jsonb-object) row fields)))    
+      (reduce #(update %1 %2 parse-jsonb-object) row fields)))
