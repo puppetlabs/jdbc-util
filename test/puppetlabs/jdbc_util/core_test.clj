@@ -31,17 +31,17 @@
                         text_stuff TEXT,
                         json_stuff JSON,
                         jsonb_stuff JSONB)"])
-  (jdbc/insert-multi! db :jsonb_testing 
-                      [{:name "a" 
-                        :text_stuff "text" 
+  (jdbc/insert-multi! db :jsonb_testing
+                      [{:name "a"
+                        :text_stuff "text"
                         :json_stuff (doto (PGobject.)
                                       (.setType "json")
                                       (.setValue (json/generate-string {:should "return encoded"})))
                         :jsonb_stuff (doto (PGobject.)
                                       (.setType "jsonb")
                                       (.setValue (json/generate-string {:should "return parsed"})))}
-                       {:name "b" 
-                        :text_stuff "text" 
+                       {:name "b"
+                        :text_stuff "text"
                         :json_stuff (doto (PGobject.)
                                       (.setType "json")
                                       (.setValue (json/generate-string {:should "return encoded"})))
@@ -99,6 +99,13 @@
 (deftest db-exists?-test
   (is (true? (db-exists? test-db (-> test-db :subname subname->db-name))))
   (is (false? (db-exists? test-db "no-database-here"))))
+
+(deftest table-exists?-test
+  (is (true? (table-exists? test-db "authors")))
+  (is (true? (table-exists? test-db "books")))
+  (is (true? (table-exists? test-db "weird_junk")))
+  (is (true? (table-exists? test-db "jsonb_testing")))
+  (is (false? (table-exists? test-db "no_table_here"))))
 
 (defn- rand-db-name [] (str "jdbc-util-test-db-" (ks/rand-str :alpha-lower 12)))
 (defn- rand-username [] (str "jdbc-util-test-user-" (ks/rand-str :alpha-lower 12)))
@@ -470,7 +477,7 @@
     (testing "when there is no associated sequence, reconcile-sequence-for-column! throws an exception"
       (is (thrown-with-msg? Exception #"No sequence found"
                             (reconcile-sequence-for-column! test-db "authors" "name"))))))
-                            
+
 (deftest obj->jsonb-test
   (testing "objects are converted to jsonb format successfully"
     (let [obj {:foo "bar" :baz "qux"}
@@ -510,11 +517,11 @@
       (is (= json-result "{\"foo\":\"bar\"}"))
       (is (map? jsonb-result))
       (is (= jsonb-result {:yee "haw"})))))
-      
+
 (deftest jsonb-converter-test
   (testing "the converter function only returns parsed jsonb columns from the db"
     (let [query (str "select * from jsonb_testing where text_stuff = 'text'")
-          convert-all-columns {:row-fn (jsonb-converter :name :text_stuff :json_stuff :jsonb_stuff)} 
+          convert-all-columns {:row-fn (jsonb-converter :name :text_stuff :json_stuff :jsonb_stuff)}
           results (jdbc/query test-db [query] convert-all-columns)]
       (doseq [result results]
         (is (string? (:name result)))
