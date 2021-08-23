@@ -106,6 +106,7 @@
 
   migration-opts is a map of:
     :migration-dir, the path to the migratus migration directory on the classpath
+    :migration-dirs, the optional list of paths to any migratus migration directories
     :migration-db, the connection map for the db used for migrations
     :replication-mode, one of :source, :replica, or :none (the default)
 
@@ -125,14 +126,22 @@
                       (try
                         ;; Try to get a connection to make sure the db is ready
                         (.close (.getConnection datasource))
-                        (when-let [{:keys [migration-db migration-dir]} migration-opts]
-                          (log/debug (trs "{0} - Starting database migration" (.getPoolName datasource)))
-                          ;; If we're a replica then pglogical will be
-                          ;; replicating our migrations for us, so we poll until
-                          ;; the migrations have been replicated
-                          (if (= (:replication-mode migration-opts) :replica)
-                            (wait-for-migrations migration-db migration-dir)
-                            (migration/migrate migration-db migration-dir)))
+                        (let [{:keys [migration-db migration-dir migration-dirs]} migration-opts]
+                          ;; ensure both the db and a migration directory is specified
+                          (if (and migration-db (or migration-dir migration-dirs))
+                            (do
+                              (log/debug (trs "{0} - Starting database migration" (.getPoolName datasource)))
+                              ;; If we're a replica then pglogical will be
+                              ;; replicating our migrations for us, so we poll until
+                              ;; the migrations have been replicated
+                              (let [migration-dirs (if migration-dirs migration-dirs [migration-dir])]
+                                (if (= (:replication-mode migration-opts) :replica)
+                                  (doseq [single-dir migration-dirs]
+                                    (wait-for-migrations migration-db single-dir))
+                                  (doseq [single-dir migration-dirs]
+                                    (log/info (trs "migrating from {0}" single-dir))
+                                    (migration/migrate migration-db single-dir)))))
+                            (log/info (trs "{0} No migration path specified, skipping database migration." (.getPoolName datasource)))))
 
                         (log/debug (trs "{0} - Starting post-migration init-fn" (.getPoolName datasource)))
                         (init-fn {:datasource datasource})

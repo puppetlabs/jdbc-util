@@ -265,7 +265,7 @@
         (with-redefs [migration/migrate (fn [migrate-db migration-dir]
                                           (deliver !migrate-with migrate-db))]
           (let [wrapped (pool/connection-pool-with-delayed-init
-                          datasource {:migration-db migration-db-spec} identity 5000)]
+                          datasource {:migration-db migration-db-spec :migration-dir "some/relative/path"} identity 5000)]
             (let [migrate-with (deref !migrate-with 5000 nil)]
              (is (= migration-db-spec migrate-with)))
             (pool/close-after-ready wrapped)

@@ -1,3 +1,9 @@
+## 1.3.0
+  * update java.jdbc to 0.7.11
+  * update migratus to 1.3.5. This version of migratus has breaking changes.
+  * migrations with multiple statements that lack a separator will now fail
+  * change the `wrap-with-delayed-init` function to handle migrations from multiple directories 
+
 ## 1.2.5
   * alter the `uncompleted-migrations` function to not have any side-effects.  Prior to this change, the routine would create the migraiton table if it didn't exist. 
 
