@@ -1,13 +1,13 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR Puppet <docs@puppet.com>
-# This file is distributed under the same license as the PACKAGE package.
+# This file is distributed under the same license as the puppetlabs.jdbc_util package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.jdbc_util \n"
-"X-Git-Ref: ab12e02697cb1daf76a2531423d8e15f0de9527d\n"
+"X-Git-Ref: 3f044302e473fca629903be53d12c69ca535c35c\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -73,6 +73,14 @@ msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
 msgid "{0} - Starting database migration"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj
+msgid "migrating from {0}"
+msgstr ""
+
+#: src/puppetlabs/jdbc_util/pool.clj
+msgid "{0} No migration path specified, skipping database migration."
 msgstr ""
 
 #: src/puppetlabs/jdbc_util/pool.clj
