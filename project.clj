@@ -6,31 +6,33 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
   :pedantic? :abort
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/java.jdbc "0.7.11"]
+  :dependencies [[org.clojure/clojure]
+                 [org.clojure/java.jdbc]
                  [org.clojure/test.check "0.9.0"]
-                 [org.postgresql/postgresql "42.2.0"]
+                 [org.postgresql/postgresql]
                  [migratus "1.3.5" :exclusions [org.clojure/clojure]]
-                 [com.zaxxer/HikariCP "2.7.4"]
-                 [puppetlabs/kitchensink "2.3.0"]
-                 [puppetlabs/i18n "0.8.0"]
-                 [io.dropwizard.metrics/metrics-core "3.1.2"]
-                 [io.dropwizard.metrics/metrics-healthchecks "3.1.2"]
-                 [cheshire "5.7.1"]]
+                 [com.zaxxer/HikariCP]
+                 [puppetlabs/kitchensink]
+                 [puppetlabs/i18n]
+                 [io.dropwizard.metrics/metrics-core]
+                 [io.dropwizard.metrics/metrics-healthchecks "3.2.2"]
+                 [cheshire]]
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.25"]
                                   [org.slf4j/slf4j-log4j12 "1.7.25"]
                                   [log4j/log4j "1.2.17"]]}}
 
-  :plugins [[lein-release "1.0.5"]
-            ;; pin clojure to resolve dependency conflict with lein-release and i18n.
-            [org.clojure/clojure "1.8.0"]
-            [puppetlabs/i18n "0.8.0"]]
+  :plugins [[lein-release "1.0.9"]
+            [lein-parent "0.3.7"]
+            [puppetlabs/i18n "0.9.2" :exclusions [org.clojure/clojure]]]
 
   :jar-exclusions [#"\.sw[a-z]$" #"~$" #"logback\.xml$" #"log4j\.properties$"]
 
   :lein-release {:scm :git
                  :deploy-via :lein-deploy}
+
+  :parent-project {:coords [puppetlabs/clj-parent "4.9.1"]
+                   :inherit [:managed-dependencies]}
 
   :deploy-repositories [["releases" {:url "https://clojars.org/repo"
                                      :username :env/clojars_jenkins_username
