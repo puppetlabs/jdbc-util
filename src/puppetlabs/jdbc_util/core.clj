@@ -330,12 +330,17 @@
     (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))
 
 (defn obj->jsonb
-  "Builds a JSONB object from a given object. All insertions into JSONB
-  columns must be wrapped with this function."
-  [value]
-  (doto (PGobject.)
-    (.setType "jsonb")
-    (.setValue (json/generate-string value))))
+  "Builds a JSONB object from a given object. All insertions into JSONB columns
+  must be wrapped with this function. Returns nil if the value is nil, to avoid
+  writing 'null'::jsonb and potentially bypassing NOT NULL constraints. This
+  behavior can be overridden by passing `{:allow-null true}`."
+  ([value]
+   (obj->jsonb value {:allow-null false}))
+  ([value {:keys [allow-null]}]
+   (when (or (some? value) allow-null)
+     (doto (PGobject.)
+       (.setType "jsonb")
+       (.setValue (json/generate-string value))))))
 
 (defn parse-jsonb-object
   "Parses the given database value as JSON if it's a JSONB PGObject. Returns
