@@ -114,8 +114,6 @@
   ([^HikariDataSource datasource init-fn timeout]
    (wrap-with-delayed-init datasource nil init-fn timeout))
   ([^HikariDataSource datasource migration-opts init-fn timeout]
-   (when-not (.getHealthCheckRegistry datasource)
-     (.setHealthCheckRegistry datasource (HealthCheckRegistry.)))
    (let [init-error (atom nil)
          init-exited-safely (promise)
          pool-future
@@ -245,4 +243,6 @@
    (connection-pool-with-delayed-init config nil init-fn timeout))
   ([^HikariConfig config migration-options init-fn timeout]
    (.setInitializationFailTimeout config -1)
+   (when-not (.getHealthCheckRegistry config)
+     (.setHealthCheckRegistry config (HealthCheckRegistry.)))
    (wrap-with-delayed-init (HikariDataSource. config) migration-options init-fn timeout)))

@@ -2,7 +2,7 @@ language: clojure
 lein: 2.9.1
 jdk:
   - openjdk11
-  - openjdk8
+  - openjdk17
 script: lein test :all
 sudo: false
 before_script:
