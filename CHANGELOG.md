@@ -1,3 +1,6 @@
+## 1.4.1
+  * no changes, accidental release
+
 ## 1.4.0
   * move to HikariCP 5.x, minor setHealthCheckRegistry instantiation change to accomodate
 
