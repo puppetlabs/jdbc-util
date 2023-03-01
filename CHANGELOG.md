@@ -1,3 +1,6 @@
+## 1.4.0
+  * move to HikariCP 5.x, minor setHealthCheckRegistry instantiation change to accomodate
+
 ## 1.3.0
   * update java.jdbc to 0.7.11
   * update migratus to 1.3.5. This version of migratus has breaking changes.

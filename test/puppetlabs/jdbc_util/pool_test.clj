@@ -227,9 +227,14 @@
          (let [wrapped (pool/connection-pool-with-delayed-init
                         config (fn [_] (throw (RuntimeException. "test exception"))) 10000)]
            (is (= [{:a 1}] (jdbc/query {:datasource wrapped} ["select 1 as a"])))
-           (is (= {:state :error
-                   :messages ["This_is_a_translated_string: test exception"]}
-                  (pool/status wrapped)))))))))
+           (is (thrown? RuntimeException (jdbc/query wrapped ["select 1 as a"])))
+           (let [pool-status (pool/status wrapped)]
+             (is (= {:state :error
+                     :messages ["This_is_a_translated_string: test exception"]}
+                    {:state (:state pool-status)
+                     ;; HikariCP 5.x series also has a second error message on timeout
+                     ;; we don't need to verify here
+                     :messages [(first (:messages pool-status))]})))))))))
 
 (deftest health-check
   (core/drop-public-tables! core-test/test-db)

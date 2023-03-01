@@ -1,4 +1,4 @@
-(defproject puppetlabs/jdbc-util "1.3.1-SNAPSHOT"
+(defproject puppetlabs/jdbc-util "1.4.0-SNAPSHOT"
   :description "Common JDBC helpers for use in Puppet Labs projects"
   :url "https://github.com/puppetlabs/jdbc-util"
 
@@ -11,7 +11,7 @@
                  [org.clojure/test.check "0.9.0"]
                  [org.postgresql/postgresql]
                  [migratus "1.3.5" :exclusions [org.clojure/clojure]]
-                 [com.zaxxer/HikariCP]
+                 [com.zaxxer/HikariCP "5.0.1"]
                  [puppetlabs/kitchensink]
                  [puppetlabs/i18n]
                  [io.dropwizard.metrics/metrics-core]
@@ -31,7 +31,7 @@
   :lein-release {:scm :git
                  :deploy-via :lein-deploy}
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.9.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "5.3.0"]
                    :inherit [:managed-dependencies]}
 
   :deploy-repositories [["releases" {:url "https://clojars.org/repo"
