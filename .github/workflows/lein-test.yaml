@@ -1,0 +1,59 @@
+name: lein_test
+
+on:
+  push:
+    branches: main
+    paths: ['src/**','test/**']
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+    paths: ['src/**','test/**']
+
+env:
+  JDBCUTIL_DBNAME: //127.0.0.1:5432/jdbc_util_test
+  JDBCUTIL_DBUSER: jdbc_util_test
+  JDBCUTIL_DBPASS: foobar
+  PGHOST: localhost
+  PGPORT: 5432
+  PGPASSWORD: foobar
+
+jobs:
+  run-lein-tests:
+    name: lein test :all
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:9.6.24
+        env:
+          POSTGRES_PASSWORD: foobar
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432      
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Configure postgres
+        run: |
+          psql -c "create user jdbc_util_test with createdb createrole password 'foobar'" -U postgres
+          psql -c "create user migrator with createdb createrole password 'foobar'" -U postgres
+          psql -c 'create database jdbc_util_test owner jdbc_util_test' -U postgres
+      - name: Setup java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 11
+      - name: Install Clojure tools
+        uses: DeLaGuardo/setup-clojure@10.2
+        with:
+          cli: latest              # Clojure CLI based on tools.deps
+          lein: latest                  # Leiningen
+          boot: latest                  # Boot.clj
+          bb: latest                    # Babashka
+          clj-kondo: latest        # Clj-kondo
+          cljstyle: latest             # cljstyle
+          zprint: latest                # zprint
+      - name: Run lein tests
+        run: lein test :all
