@@ -1,6 +1,7 @@
 name: lein_test
 
 on:
+  workflow_dispatch:
   push:
     branches: main
     paths: ['src/**','test/**']
