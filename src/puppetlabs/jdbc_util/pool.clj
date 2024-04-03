@@ -146,8 +146,8 @@
                         (log/debug (trs "{0} - Finished database migration" (.getPoolName datasource)))
                         datasource
                         (catch SQLTransientException e
-                               (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying.")
-                                   (.getPoolName datasource))
+                               (log/warnf e (trs "{0} - Error while attempting to connect to database, retrying."
+                                   (.getPoolName datasource)))
                                nil)
                         (catch Exception e
                           (reset! init-error e)
