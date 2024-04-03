@@ -32,7 +32,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432:5432      
+          - 5432:5432
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
@@ -47,7 +47,7 @@ jobs:
           distribution: temurin
           java-version: 11
       - name: Install Clojure tools
-        uses: DeLaGuardo/setup-clojure@10.2
+        uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: latest              # Clojure CLI based on tools.deps
           lein: latest                  # Leiningen

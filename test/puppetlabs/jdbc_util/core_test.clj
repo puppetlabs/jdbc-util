@@ -155,10 +155,11 @@
           (create-db! test-db rand-db other-user)
           (is (true? (db-exists? test-db rand-db)))
           (jdbc/execute! test-db
-                         (format (str "GRANT %s TO %s"
-                                      ";DROP DATABASE %s")
+                         (format (str "GRANT %s TO %s")
                                  (pg-escape-identifier other-user)
-                                 (pg-escape-identifier (:user test-db))
+                                 (pg-escape-identifier (:user test-db))))
+          (jdbc/execute! test-db
+                         (format (str "DROP DATABASE %s")
                                  (pg-escape-identifier rand-db))
                          {:transaction? false})
           (drop-user! test-db other-user)))
