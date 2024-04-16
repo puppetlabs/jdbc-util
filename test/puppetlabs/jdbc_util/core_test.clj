@@ -437,23 +437,36 @@
     "foobar"        "\"foobar\""
     "a.b.c"         "\"a\".\"b\".\"c\""))
 
+(defn set-sequence-value
+  ([value]
+   (jdbc/query test-db ["SELECT setval('sequence_test_id_seq', ?)" value]))
+  ([value is_called]
+   jdbc/query test-db ["SELECT setval('sequence_test_id_seq', ?)" value is_called]))
+
 (deftest reconcile-sequence-for-column-test
   (let [max-id #(-> (jdbc/query test-db ["SELECT id FROM sequence_test ORDER BY id DESC LIMIT 1"])
                     first
                     :id)
         insert-dummy #(jdbc/execute! test-db ["INSERT INTO sequence_test DEFAULT VALUES"])
-        set-sequence-value #(jdbc/query test-db ["SELECT setval('sequence_test_id_seq', ?)" %])
-        current-sequence-value #(-> (jdbc/query test-db ["SELECT last_value FROM sequence_test_id_seq"])
-                                    first
-                                    :last_value)]
+        current-sequence-value #(-> (jdbc/query test-db ["SELECT last_value, is_called FROM sequence_test_id_seq"])
+                                    first)]
     (testing "given a table with a sequence object"
       (jdbc/execute! test-db ["DROP TABLE IF EXISTS sequence_test CASCADE"])
       (jdbc/execute! test-db ["CREATE TABLE sequence_test (id BIGSERIAL PRIMARY KEY)"])
 
-      (testing "when the table is empty, reconcile-sequence-for-column! sets the sequence to 1"
+      (testing "when the table is empty, reconcile-sequence-for-column! does nothing"
         (reconcile-sequence-for-column! test-db "sequence_test" "id")
+        (is (= {:last_value 1 :is_called false} (current-sequence-value)))
         (insert-dummy)
+        (is (= {:last_value 1 :is_called true} (current-sequence-value)))
         (is (= 1 (max-id))))
+
+      (testing "when is_called is false"
+        (let [previous-max (max-id)]
+          (insert-dummy)
+          (set-sequence-value previous-max false)
+          (reconcile-sequence-for-column! test-db "sequence_test" "id")
+          (is (= {:last_value (inc previous-max) :is_called true} (current-sequence-value)))))
 
       (testing "where the sequence object is out of date"
         (dotimes [_ 5] (insert-dummy))
