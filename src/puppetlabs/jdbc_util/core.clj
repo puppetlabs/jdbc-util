@@ -318,15 +318,18 @@
   If the column has no associated sequence, throws an Exception."
   [db table column]
   (if-let [sequence-name (get-sequence-name-for-column db table column)]
-    (let [select-last-value (str "(SELECT last_value FROM " (quoted sequence-name) ")")
+    (let [select-seq-values (str "(SELECT last_value, is_called FROM " (quoted sequence-name) ")")
           select-max-in-column (str "(SELECT MAX(" (quoted column) ") FROM " (quoted table) ")")]
       (jdbc/with-db-transaction [txn-db db]
         (jdbc/execute! txn-db [(format "LOCK TABLE \"%s\" IN EXCLUSIVE MODE" table)])
         (jdbc/query txn-db [(str "SELECT"
                                  "  CASE"
-                                 "  WHEN " select-max-in-column " > " select-last-value
-                                 "    THEN setval('" sequence-name "', " select-max-in-column ")"
-                                 "  END")])))
+                                 "  WHEN seq.is_called = true AND " select-max-in-column " > seq.last_value"
+                                 "    THEN setval('" sequence-name "', " select-max-in-column ", true)"
+                                 "  WHEN seq.is_called = false AND " select-max-in-column " >= seq.last_value"
+                                 "    THEN setval('" sequence-name "', " select-max-in-column ", true)"
+                                 "  END"
+                                 "  FROM " select-seq-values " AS seq")])))
     (throw (Exception. (format "No sequence found for column %s on table %s." table column)))))
 
 (defn obj->jsonb
