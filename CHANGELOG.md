@@ -1,3 +1,8 @@
+## 1.4.2
+  * fix `reconcile-sequence-for-column!` logic to account for `is_called`
+    behavior.
+  * fix connection pool error message log to include the pool's name
+
 ## 1.4.1
   * no changes, accidental release
 
