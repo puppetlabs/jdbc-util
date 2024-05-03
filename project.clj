@@ -18,9 +18,8 @@
                  [io.dropwizard.metrics/metrics-healthchecks "3.2.2"]
                  [cheshire]]
 
-  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "1.7.25"]
-                                  [org.slf4j/slf4j-log4j12 "1.7.25"]
-                                  [log4j/log4j "1.2.17"]]}}
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api]
+                                  [org.slf4j/log4j-over-slf4j]]}}
 
   :plugins [[lein-release "1.0.9"]
             [lein-parent "0.3.7"]
@@ -31,7 +30,7 @@
   :lein-release {:scm :git
                  :deploy-via :lein-deploy}
 
-  :parent-project {:coords [puppetlabs/clj-parent "5.3.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "5.6.15"]
                    :inherit [:managed-dependencies]}
 
   :deploy-repositories [["releases" {:url "https://clojars.org/repo"
