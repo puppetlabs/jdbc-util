@@ -13,7 +13,7 @@ jobs:
       with:
         service-key: ${{ secrets.TWINGATE_PUBLIC_REPO_KEY }}
     - name: checkout repo content
-      uses: actions/checkout@v5 # checkout the repository content to github runner.
+      uses: actions/checkout@v4 # checkout the repository content to github runner.
       with:
         fetch-depth: 1
     # install java which is required for mend and clojure
