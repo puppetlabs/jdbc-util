@@ -11,7 +11,7 @@ jobs:
     - name: connect_twingate
       uses: twingate/github-action@v1
       with:
-        service-key: ${{ secrets.TWINGATE_PUBLIC_REPO_KEY2 }}
+        service-key: ${{ secrets.TWINGATE_PUBLIC_REPO_KEY }}
     - name: checkout repo content
       uses: actions/checkout@v2 # checkout the repository content to github runner.
       with:
