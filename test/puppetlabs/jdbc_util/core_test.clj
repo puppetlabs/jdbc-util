@@ -500,9 +500,13 @@
           jsonb-string (obj->jsonb string)
           jsonb-obj (obj->jsonb obj)
           jsonb-num (obj->jsonb num)]
-      (is (= (type jsonb-string) org.postgresql.util.PGobject))
-      (is (= (type jsonb-obj) org.postgresql.util.PGobject))
-      (is (= (type jsonb-num) org.postgresql.util.PGobject)))))
+      (is (= org.postgresql.util.PGobject (type jsonb-string)))
+      (is (= org.postgresql.util.PGobject (type jsonb-obj)))
+      (is (= org.postgresql.util.PGobject (type jsonb-num)))))
+  (testing "returns nil without serializing it"
+    (is (nil? (obj->jsonb nil))))
+  (testing "serializes nil if allow-null is specified"
+    (is (= org.postgresql.util.PGobject (type (obj->jsonb nil {:allow-null true}))))))
 
 (deftest parse-jsonb-object-test
   (testing "if the resource is not a PGobject, the original object is returned"
