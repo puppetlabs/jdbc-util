@@ -8,7 +8,6 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure]
                  [org.clojure/java.jdbc]
-                 [org.clojure/test.check "0.9.0"]
                  [org.postgresql/postgresql]
                  [migratus "1.3.5" :exclusions [org.clojure/clojure]]
                  [com.zaxxer/HikariCP]
@@ -19,7 +18,8 @@
                  [cheshire]]
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-api]
-                                  [org.slf4j/log4j-over-slf4j]]}}
+                                  [org.slf4j/log4j-over-slf4j]]}
+             :test {:dependencies [[org.clojure/test.check "1.1.1"]]}}
 
   :plugins [[lein-release "1.0.9"]
             [lein-parent "0.3.7"]
