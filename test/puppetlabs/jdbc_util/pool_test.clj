@@ -84,6 +84,19 @@
       (is (= "org.postgresql.ds.PGSimpleDataSource"
              (.getDataSourceClassName config))))))
 
+(deftest select-user-configurable-hikari-options-test
+  (testing "keeps only the recognized hikari options"
+    (is (= {:connection-timeout 5000
+            :maximum-pool-size 10}
+           (pool/select-user-configurable-hikari-options
+            {:connection-timeout 5000 :maximum-pool-size 10 :user "x"}))))
+
+  (testing "returns an empty map when no recognized options are present"
+    (is (= {} (pool/select-user-configurable-hikari-options {:user "x" :password "y"}))))
+
+  (testing "returns an empty map for an empty input"
+    (is (= {} (pool/select-user-configurable-hikari-options {})))))
+
 (deftest delayed-init
   (let [ready (atom false)
         retries (atom 0)

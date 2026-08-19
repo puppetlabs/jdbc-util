@@ -61,13 +61,12 @@
   allow users to set these fields in the database configuration section of a
   service's TrapperKeeper config."
   [m]
-  (select-keys [:connection-timeout
-                :connection-check-timeout
-                :idle-timeout
-                :max-lifetime
-                :minimum-idle
-                :maximum-pool-size]
-               m))
+  (select-keys m [:connection-timeout
+                  :connection-check-timeout
+                  :idle-timeout
+                  :max-lifetime
+                  :minimum-idle
+                  :maximum-pool-size]))
 
 (defprotocol PoolStatus
   (status [this] "Get a map representing the status of a connection pool.")
