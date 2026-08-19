@@ -91,6 +91,22 @@
       :exists
       (= 1)))
 
+(defn- execute-unpiped!
+  "Execute each SQL string in `sqls`, in order, as its own separate,
+  unbatched, unprepared statement on a single connection to `db-spec`.
+
+  clojure.java.jdbc's execute! always issues SQL through a PreparedStatement
+  and can combine multiple statements into a single batch, both of which
+  Postgres treats as an implicit 'pipeline' of commands sent without waiting
+  for prior results. Postgres rejects certain administrative commands (e.g.
+  CREATE DATABASE, DROP DATABASE) inside such a pipeline. Running each
+  command as its own plain Statement avoids that restriction."
+  [db-spec sqls]
+  (with-open [conn (jdbc/get-connection db-spec)]
+    (doseq [sql sqls]
+      (with-open [stmt (.createStatement conn)]
+        (.execute stmt sql)))))
+
 (defn create-db!
   "Given a DB spec, the database's name, and the name of the user that will own
   the database, creates the database `db-name` owned by `db-owner`, with the
@@ -108,24 +124,22 @@
         safe-owner (pg-escape-identifier db-owner)
         safe-user (pg-escape-identifier (:user admin-db-spec))
         create-db-statement (format "CREATE DATABASE %s WITH OWNER %s ENCODING 'UTF8'"
-                                    safe-db-name safe-owner)
-        sql (if (has-role? admin-db-spec (:user admin-db-spec) db-owner)
-              create-db-statement
-              (format (str "GRANT %s TO %s"
-                           ";" create-db-statement
-                           ";REVOKE %s FROM %s")
-                      safe-owner safe-user
-                      safe-owner safe-user))]
-    (jdbc/execute! admin-db-spec sql {:transaction? false})))
+                                    safe-db-name safe-owner)]
+    (if (has-role? admin-db-spec (:user admin-db-spec) db-owner)
+      (execute-unpiped! admin-db-spec [create-db-statement])
+      (execute-unpiped! admin-db-spec
+                         [(format "GRANT %s TO %s" safe-owner safe-user)
+                          create-db-statement
+                          (format "REVOKE %s FROM %s" safe-owner safe-user)]))))
 
 (defn drop-db!
   "Given a DB spec that has a user with permission to drop the database
   `db-name` and that connects to a database that isn't `db-name`, and the
   database's name `db-name`, drop that database named by `db-name`."
   [admin-db-spec db-name]
-  (let [sql (format "DROP DATABASE IF EXISTS %s" (pg-escape-identifier db-name))]
-    (jdbc/execute! admin-db-spec [sql] {:transaction? false})
-    nil))
+  (execute-unpiped! admin-db-spec
+                     [(format "DROP DATABASE IF EXISTS %s" (pg-escape-identifier db-name))])
+  nil)
 
 (defn user-exists?
   "Given a DB spec that connects with a user besides `username`, return

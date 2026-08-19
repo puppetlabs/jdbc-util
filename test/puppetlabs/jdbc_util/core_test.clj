@@ -138,10 +138,7 @@
                            (is (false? (db-exists? test-db db)))
                            (create-db! test-db db user)
                            (is (true? (db-exists? test-db db)))
-                           (jdbc/execute! test-db
-                                          (format "DROP DATABASE %s"
-                                                  (pg-escape-identifier db))
-                                          {:transaction? false}))]
+                           (drop-db! test-db db))]
 
     (testing "create-db!"
       (testing "works in the simple case"
@@ -158,10 +155,7 @@
                          (format (str "GRANT %s TO %s")
                                  (pg-escape-identifier other-user)
                                  (pg-escape-identifier (:user test-db))))
-          (jdbc/execute! test-db
-                         (format (str "DROP DATABASE %s")
-                                 (pg-escape-identifier rand-db))
-                         {:transaction? false})
+          (drop-db! test-db rand-db)
           (drop-user! test-db other-user)))
 
       (testing "handles DB & user names that try to break quoting"
@@ -183,14 +177,11 @@
           (create-db! test-db rand-db (:user test-db))
           (is (thrown-with-msg? PSQLException #"already exists"
                                 (create-db! test-db rand-db (:user test-db))))
-          (jdbc/execute! test-db [(format "DROP DATABASE \"%s\"" rand-db)]
-                         {:transaction? false}))))))
+          (drop-db! test-db rand-db))))))
 
 (deftest drop-db!-test
   (let [test-with-name (fn [db]
-                         (jdbc/execute! test-db
-                                        [(format "CREATE DATABASE %s" (pg-escape-identifier db))]
-                                        {:transaction? false})
+                         (create-db! test-db db (:user test-db))
                          (is (true? (db-exists? test-db db)))
                          (is (nil? (drop-db! test-db db)))
                          (is (false? (db-exists? test-db db))))]
