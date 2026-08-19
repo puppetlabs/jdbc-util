@@ -107,28 +107,54 @@
       (with-open [stmt (.createStatement conn)]
         (.execute stmt sql)))))
 
+(defn- server-version-num
+  "The connected Postgres server's version as an integer, e.g. 170004 for
+  17.4. See https://www.postgresql.org/docs/current/runtime-config-preset.html#GUC-SERVER-VERSION-NUM"
+  [db-spec]
+  (-> (jdbc/query db-spec ["SHOW server_version_num"])
+      first
+      :server_version_num
+      Long/parseLong))
+
+(defn- can-set-role?
+  "True if `user` can use SET ROLE to assume `role`. Before Postgres 16,
+  role MEMBERship implied this ability, so pg_has_role's MEMBER privilege
+  type was sufficient evidence; Postgres 16 split SET ROLE ability out into
+  its own SET privilege, and a role can hold MEMBER without SET (e.g. the
+  ADMIN-only, SET-false membership Postgres 16+ automatically grants a
+  CREATEROLE user over a role it just created)."
+  [db-spec user role version-num]
+  (let [privilege (if (>= version-num 160000) "SET" "MEMBER")]
+    (-> (jdbc/query db-spec ["SELECT pg_has_role(?, ?, ?)" user role privilege])
+        first
+        :pg_has_role
+        true?)))
+
 (defn create-db!
   "Given a DB spec, the database's name, and the name of the user that will own
   the database, creates the database `db-name` owned by `db-owner`, with the
   DB's encoding set to UTF-8. The DB spec should connect to a different database
   than the one being created, and the user in the DB spec must have the CREATEDB
   permission. If the `db-owner` differs from the user in the DB spec, then the
-  user in the DB spec must either be a member of the `db-owner` role, or have
-  the CREATEROLE permission, or be a superuser.
+  user in the DB spec must either be able to SET ROLE to the `db-owner` role,
+  or have the CREATEROLE permission, or be a superuser.
 
   NB: this function is not thread-safe when multiple threads create databases
   with the same `db-owner`, unless the :user specified in `admin-db-spec` is
-  `db-owner`, is otherwise a member of the `db-owner` role, or is a superuser."
+  `db-owner`, already able to SET ROLE to the `db-owner` role, or is a
+  superuser."
   [admin-db-spec db-name db-owner]
   (let [safe-db-name (pg-escape-identifier db-name)
         safe-owner (pg-escape-identifier db-owner)
         safe-user (pg-escape-identifier (:user admin-db-spec))
+        version-num (server-version-num admin-db-spec)
         create-db-statement (format "CREATE DATABASE %s WITH OWNER %s ENCODING 'UTF8'"
                                     safe-db-name safe-owner)]
-    (if (has-role? admin-db-spec (:user admin-db-spec) db-owner)
+    (if (can-set-role? admin-db-spec (:user admin-db-spec) db-owner version-num)
       (execute-unpiped! admin-db-spec [create-db-statement])
       (execute-unpiped! admin-db-spec
-                         [(format "GRANT %s TO %s" safe-owner safe-user)
+                         [(cond-> (format "GRANT %s TO %s" safe-owner safe-user)
+                            (>= version-num 160000) (str " WITH SET TRUE"))
                           create-db-statement
                           (format "REVOKE %s FROM %s" safe-owner safe-user)]))))
 
